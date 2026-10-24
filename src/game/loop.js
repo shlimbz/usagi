@@ -166,7 +166,7 @@ export class SceneLoop extends SceneProgression {
                : this.swing && name === atkAnim ? this.swing.rate : this.rush ? 3 : 1;
     this.anim.update(dt * rate);
     this.actor.setPosition(P.x, P.y).setScale(S * P.dir, S).setDepth(P.y);
-    this.rig.apply(this.anim.pose, name === 'walk' || name === 'run' || (moving && !this.rig.P.bob && !this.swing), speed, dt);
+    this.rig.apply(this.anim.pose, name === 'walk' || name === 'run' || (moving && !this.swing), speed, dt);
 
     // ---- 적 이동 + 접촉 + 화상 ----
     const E = this.enemies, kd = Math.exp(-8 * dt), sing = !!this.X.sing;

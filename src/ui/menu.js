@@ -30,7 +30,7 @@ export function buildPortraits(done) {
         const g = o.getContext('2d'), sc = cfg.scale * U, w = (x1 - x0 + 1) * sc, h = (y1 - y0 + 1) * sc;
         const top = (BH - PADB) * U - (cfg.ay - y0) * sc;   // 발밑(ay)을 바닥선에
         g.imageSmoothingQuality = 'high';
-        if (P.flipX) { g.translate(o.width, 0); g.scale(-1, 1); }
+        if (!!P.flipX !== !!cfg.flipX) { g.translate(o.width, 0); g.scale(-1, 1); }
         g.drawImage(img, x0, y0, x1 - x0 + 1, y1 - y0 + 1, (o.width - w) / 2, top, w, h);
         PORTRAITS[id] = o.toDataURL();
       } catch (e) { PORTRAITS[id] = cfg.src; }

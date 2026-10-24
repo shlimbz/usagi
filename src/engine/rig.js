@@ -8,7 +8,7 @@ import { ANIMS, CH, sample } from './anim.js';
  * 반환: { a, x } — 창 그림의 (손잡이부터 끝까지) 길이 t 일 때 창끝의 발밑 기준 앞쪽 거리 = a·t + x */
 function hitTipTransform(P) {
   const A = ANIMS[P.anim], p = sample(A, A.dur * (A.hitAt ?? .4), { ...CH });
-  const cfg = P.poses.idle, flip = P.flipX ? -1 : 1, L = P.armReach ?? 8, ar = rad(p.armF), a0 = rad(20);
+  const cfg = P.poses.idle, flip = (P.flipX ? -1 : 1) * (cfg.flipX ? -1 : 1), L = P.armReach ?? 8, ar = rad(p.armF), a0 = rad(20);
   const hx = (cfg.hand[0] - cfg.ax) * cfg.scale * flip + L * (Math.sin(ar) - Math.sin(a0));
   const hy = (cfg.hand[1] - cfg.ay) * cfg.scale - P.hipY - L * (Math.cos(a0) - Math.cos(ar));
   const mul = (A, B) => [A[0]*B[0]+A[2]*B[1], A[1]*B[0]+A[3]*B[1], A[0]*B[2]+A[2]*B[3], A[1]*B[2]+A[3]*B[3], A[0]*B[4]+A[2]*B[5]+A[4], A[1]*B[4]+A[3]*B[5]+A[5]];
@@ -25,7 +25,7 @@ export class Rig {
     this.scene = scene;
     this.root = scene.make.container({ x: 0, y: 0 }, false);
     parent.add(this.root);
-    this.flashT = 0; this.flashing = false; this.poseClock = 0;
+    this.flashT = 0; this.flashing = false;
   }
   build(id) {
     const s = this.scene, P = PRESETS[id], mc = (x, y) => s.make.container({ x, y }, false);
@@ -40,9 +40,10 @@ export class Rig {
       const im = s.make.image({ x: 0, y: -this.hipY, key: cfg.key }, false);
       im.setOrigin(cfg.ax / im.width, cfg.ay / im.height);
       im.baseScale = cfg.scale;
-      im.setScale(cfg.scale * this.flip, cfg.scale).setVisible(pn === 'idle');
+      im.flipSign = this.flip * (cfg.flipX ? -1 : 1);      // 캐릭터 반전 × 포즈별 반전 (그림마다 보는 방향이 달라도 됨)
+      im.setScale(cfg.scale * im.flipSign, cfg.scale).setVisible(pn === 'idle');
       this.imgs[pn] = im;
-      this.anchors[pn] = { x: (cfg.hand[0] - cfg.ax) * cfg.scale * this.flip, y: (cfg.hand[1] - cfg.ay) * cfg.scale - this.hipY };
+      this.anchors[pn] = { x: (cfg.hand[0] - cfg.ax) * cfg.scale * im.flipSign, y: (cfg.hand[1] - cfg.ay) * cfg.scale - this.hipY };
       this.hip.add(im);
     }
     this.parts = Object.values(this.imgs);
@@ -86,23 +87,15 @@ export class Rig {
     this.root.y = cy * (1 - Math.cos(sr)) - p.lift;
     const poseName = moving && this.imgs.run ? 'run' : 'idle', bodyImg = this.imgs[poseName];
     for (const pn in this.imgs) this.imgs[pn].visible = pn === poseName;
-    if (moving && !this.imgs.run && P.bob) {
-      this.poseClock += dt * (speed > 160 ? 15 : 10);
-      const b = Math.sin(this.poseClock), bs = bodyImg.baseScale;
-      this.hip.setPosition(0, this.hipY - p.bodyY * .72);
-      this.hip.rotation = rad(clamp(p.bodyRot, -7, 7));
-      this.hip.setScale(1 + (p.sx - 1) * .7, 1 + (p.sy - 1) * .7);
-      bodyImg.setPosition(0, -this.hipY - Math.max(0, b) * 1.25);
-      bodyImg.setScale(bs * (1 + P.bob.sx * b) * this.flip, bs * (1 - P.bob.sy * b));
-      bodyImg.rotation = P.bob.rot * Math.sin(this.poseClock * .7);
-    } else {
-      this.hip.setPosition(0, this.hipY - p.bodyY);
-      this.hip.rotation = rad(p.bodyRot);
-      this.hip.setScale(p.sx, p.sy);
-      bodyImg.setPosition(0, -this.hipY);
-      bodyImg.setScale(bodyImg.baseScale * this.flip, bodyImg.baseScale);
-      bodyImg.rotation = 0;
-    }
+    // 모든 캐릭터가 동일한 키프레임을 사용한다. 별도 run 그림이 있는 우사기는
+    // 이동 시 그림도 교체하고, 단일 그림인 치이카와·하치와레는 같은 키프레임으로
+    // 몸의 들썩임/기울기/스쿼시를 적용해 걷기와 뛰기를 구분한다.
+    this.hip.setPosition(0, this.hipY - p.bodyY);
+    this.hip.rotation = rad(p.bodyRot);
+    this.hip.setScale(p.sx, p.sy);
+    bodyImg.setPosition(0, -this.hipY);
+    bodyImg.setScale(bodyImg.baseScale * bodyImg.flipSign, bodyImg.baseScale);
+    bodyImg.rotation = 0;
     const A = this.anchors[poseName], L = P.armReach ?? 8, a = rad(p.armF), a0 = rad(20);
     this.hand.setPosition(A.x + L * (Math.sin(a) - Math.sin(a0)), A.y - L * (Math.cos(a0) - Math.cos(a)));
     this.weaponHolder.rotation = rad(p.spearAng);

@@ -16,7 +16,9 @@ export const ASSETS = {
     usagi_idle: 'assets/characters/usagi_idle.png',
     usagi_run:  'assets/characters/usagi_run.png',
     chii_idle:  'assets/characters/chiikawa_idle.png',
-    hachi_idle: 'assets/characters/hachiware_idle.png'
+    chii_run:   'assets/characters/chiikawa_run.png',      // 예전 대기 그림 → 이동용
+    hachi_idle: 'assets/characters/hachiware_idle.png',
+    hachi_run:  'assets/characters/hachiware_run.png'      // 예전 대기 그림(왼쪽을 봄 → flipX) → 이동용
   },
   enemies: {
     e_slime: null,

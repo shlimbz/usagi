@@ -91,7 +91,7 @@ export class Main extends SceneLoop {
       for (const im of this.friendImgs) {
         const f = offs.find(o => o.id === im.cid);
         im.setVisible(!!f);
-        if (f) im.setPosition(P.x + f.ox, P.y + f.oy).setScale(im.baseScale * (PRESETS[f.id].flipX ? -1 : 1) * P.dir, im.baseScale).setDepth(P.y + f.oy).setAlpha(.9);
+        if (f) im.setPosition(P.x + f.ox, P.y + f.oy).setScale(im.baseScale * (!!PRESETS[f.id].flipX !== !!PRESETS[f.id].poses.idle.flipX ? -1 : 1) * P.dir, im.baseScale).setDepth(P.y + f.oy).setAlpha(.9);
       }
     } else for (const im of this.friendImgs) im.setVisible(false);
 

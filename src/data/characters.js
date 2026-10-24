@@ -29,9 +29,11 @@ export const PRESETS = {
     traitShort:'체력 ↓ = 공격·속도 ↑', spShort:'무적 돌진',
     trait:'용기', traitDesc:'HP가 낮을수록 피해·공격속도·이동속도 증가 (HP 20% 이하에서 최대, 레벨이 오를수록 커짐)',
     spName:'시러! 시러!!!', spDesc:'이동 방향으로 무적 돌진, 경로의 모든 적에게 큰 피해',
-    hipY:-25.75, armReach:8,
-    bob: { sx:.022, sy:.045, rot:.028 },
-    poses: { idle: { key:'chiikawa:idle', src:IMG.chii_idle, scale:51.5 / 359, ax:157.5, ay:359, hand:[265, 208] } },
+    hipY:-26, armReach:8,
+    poses: {
+      idle: { key:'chiikawa:idle', src:IMG.chii_idle, scale:52 / 223,   ax:96.5,  ay:222, hand:[177, 162] },
+      run:  { key:'chiikawa:run',  src:IMG.chii_run,  scale:52 / 351,   ax:157.5, ay:355, hand:[265, 208] }   // 그림 부분(여백 4px 제외) 높이 = 대기와 같은 52
+    },
     weapon: { key:'w_chiikawa_systema', gen:{ type:'systema', color:0xf19ab5, hi:0xffd7e2 }, len:108, grip:.30 },
     shape:'cone', anim:'attack_thrust',
     base: { hp:80, walk:120, run:190, dmg:11, cd:1.0, width:180, range:105, kb:400, xp:1 }
@@ -41,9 +43,11 @@ export const PRESETS = {
     traitShort:'경험치 +10%', spShort:'5초간 사방 찌르기',
     trait:'차근차근', traitDesc:'경험치 획득량 +10%',
     spName:'어떻게든 되어라~!', spDesc:'5초간 사방으로 2연타 찌르기 + 강한 넉백, 받는 피해 -50%',
-    hipY:-26, armReach:8, flipX:true,
-    bob: { sx:.018, sy:.035, rot:.018 },
-    poses: { idle: { key:'hachiware:idle', src:IMG.hachi_idle, scale:52 / 125, ax:55, ay:125, hand:[17.6, 72.5] } },
+    hipY:-26, armReach:8,
+    poses: {
+      idle: { key:'hachiware:idle', src:IMG.hachi_idle, scale:52 / 288, ax:122, ay:287, hand:[226, 185] },
+      run:  { key:'hachiware:run',  src:IMG.hachi_run,  scale:52 / 117, ax:55,  ay:121, hand:[17.6, 72.5], flipX:true }   // 원본이 왼쪽을 봄 · 여백 4px 제외 높이 52
+    },
     weapon: { key:'w_hachiware_systema', gen:{ type:'systema', color:0x7da9bf, hi:0xd7edf5 }, len:108, grip:.30 },
     shape:'cone', anim:'attack_thrust',
     base: { hp:120, walk:120, run:190, dmg:10, cd:.75, width:180, range:110, kb:400, xp:1.1 }

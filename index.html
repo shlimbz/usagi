@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#1d2230">
+<title>우사기 서바이버</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="game"></div>
+<div id="hurtFx"></div>
+<div id="toast"></div>
+
+<!-- 게임 중 UI -->
+<div id="hud" class="ingame">
+  <div id="xpbar"><div id="xpfill"></div></div>
+  <div id="row">
+    <div id="hpwrap"><div id="hpfill"></div></div>
+    <span class="panel stat" id="lv">Lv 1</span>
+    <span class="panel stat" id="time">00:00</span>
+    <span class="panel stat" id="kills">처치 0</span>
+    <span class="panel stat" id="coin">보수 0</span>
+    <span class="panel stat" id="trait"></span>
+    <button id="pauseBtn" title="일시정지 (Esc)">❚❚</button>
+  </div>
+</div>
+<span class="panel stat" id="perf"></span>
+<div id="stick" class="ingame"><div id="knob"></div></div>
+<button id="runBtn" class="ingame">달리기</button>
+<button id="spinBtn" class="ingame">필살기</button>
+<div id="help">WASD/방향키 이동 · Shift 달리기 · 공격은 자동 · Space 필살기(게이지) · Esc 일시정지</div>
+
+<!-- 메인 메뉴 -->
+<div class="overlay" id="menu"><div class="card" style="background:transparent;box-shadow:none">
+  <h1 id="title">우사기 서바이버</h1>
+  <p id="subtitle">몰려오는 적을 피해 <b id="goalTxt">10분</b> 동안 살아남으세요</p>
+  <div class="btns" style="max-width:320px;margin:0 auto">
+    <button class="btn primary" data-act="toSelect">시작하기</button>
+    <button class="btn" data-act="settings">설정</button>
+  </div>
+  <div class="howto">이동: WASD·방향키 (모바일: 왼쪽 조이스틱)<br>공격: 자동 — 가까운 적, 없으면 이동 방향<br>필살기: 게이지가 차면 Space (모바일: 오른쪽 버튼)</div>
+</div></div>
+
+<!-- 캐릭터 선택 -->
+<div class="overlay" id="select"><div class="card wide">
+  <h2>캐릭터 선택</h2>
+  <div id="charCards"></div>
+  <div class="row2" style="margin-top:14px">
+    <button class="btn" data-act="toMenu">뒤로</button>
+    <button class="btn primary" data-act="start">출발! (Enter)</button>
+  </div>
+</div></div>
+
+<!-- 일시정지 -->
+<div class="overlay" id="pause"><div class="card">
+  <h2>일시정지</h2>
+  <div class="btns">
+    <button class="btn primary" data-act="resume">계속하기 (Esc)</button>
+    <button class="btn" data-act="restart">다시 시작</button>
+    <button class="btn" data-act="settings">설정</button>
+    <button class="btn" data-act="toMenu">메인 메뉴</button>
+  </div>
+  <div id="build"></div>
+</div></div>
+
+<!-- 설정 -->
+<div class="overlay" id="settings"><div class="card">
+  <h2>설정</h2>
+  <label class="set"><span>효과음 볼륨</span><input id="sVol" type="range" min="0" max="1" step="0.05"></label>
+  <label class="set"><span>음악 볼륨<small>assets/audio/music 에 음악을 넣으면 재생</small></span><input id="sMusic" type="range" min="0" max="1" step="0.05"></label>
+  <label class="set"><span>가까운 적 자동조준<small>끄면 항상 이동 방향으로 공격</small></span><input id="sAim" type="checkbox"></label>
+  <label class="set"><span>화면 흔들림</span><input id="sShake" type="checkbox"></label>
+  <label class="set dev"><span>판정 표시<small>개발용</small></span><input id="sDbg" type="checkbox"></label>
+  <label class="set dev"><span>적 배율 <b id="sStressV"></b><small>개발용 · 부하 테스트</small></span><input id="sStress" type="range" min="1" max="4" step="0.5"></label>
+  <div class="btns">
+    <button class="btn" data-act="fullscreen">전체 화면</button>
+    <button class="btn primary" data-act="back">돌아가기</button>
+  </div>
+</div></div>
+
+<!-- 레벨업 / 보물상자 -->
+<div class="overlay" id="lvup"><div class="card wide">
+  <h2 id="lvTitle">레벨 업!</h2>
+  <div id="lvOpts"></div>
+  <div id="lvTools" class="row2">
+    <button class="btn" id="bReroll">다시 뽑기 (R)</button>
+    <button class="btn" id="bBanish">빼기 (B)</button>
+    <button class="btn" id="bSkip">넘기기 (X)</button>
+  </div>
+  <div id="lvHint"></div>
+</div></div>
+
+<!-- 결과 -->
+<div class="overlay" id="result"><div class="card">
+  <h2 id="resTitle">쓰러졌어요</h2>
+  <div id="resTxt"></div>
+  <div id="resBest"></div>
+  <div id="resBuild"></div>
+  <div class="btns">
+    <button class="btn primary" data-act="restart">다시 하기 (R)</button>
+    <div class="row2">
+      <button class="btn" data-act="toSelect">캐릭터 선택</button>
+      <button class="btn" data-act="toMenu">메인 메뉴</button>
+    </div>
+  </div>
+</div></div>
+
+
+<!-- Phaser 3 (전역 Phaser). 오프라인으로 쓰려면 파일을 내려받아 경로만 바꾸면 됨 -->
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<!-- 게임 코드 (ES 모듈) — 반드시 웹 서버로 열어야 함 (README 참고) -->
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+/* 우사기 서바이버 — 화면 스타일 (HUD · 메뉴 · 레벨업 카드) */
+html,body{margin:0;height:100%;background:#1d2230;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;color:#fff}
+#game{position:fixed;inset:0}
+#game canvas{display:block}
+button{font-family:inherit}
+.panel{background:rgba(20,24,36,.72);border-radius:10px;padding:6px 10px}
+
+/* ---- 게임 중 HUD ---- */
+.ingame{display:none}
+body.playing .ingame{display:flex}
+body.playing #spinBtn.ingame,body.playing #runBtn.ingame{display:block}
+#hud{position:fixed;z-index:5;top:max(8px,env(safe-area-inset-top));left:8px;right:8px;flex-direction:column;gap:6px;pointer-events:none;font-size:13px}
+#xpbar{height:10px;border-radius:6px;background:rgba(0,0,0,.45);overflow:hidden;border:1px solid rgba(255,255,255,.25)}
+#xpfill{height:100%;width:0;background:linear-gradient(90deg,#5ec8ff,#a37bff)}
+#row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#hpwrap{width:160px;height:14px;border-radius:7px;background:rgba(0,0,0,.45);overflow:hidden;border:1px solid rgba(255,255,255,.3)}
+#hpfill{height:100%;width:100%;background:linear-gradient(90deg,#ff6b81,#ff9a8a)}
+#hpwrap.low{animation:lowhp .6s infinite alternate}
+@keyframes lowhp{to{border-color:#ff3b3b;box-shadow:0 0 10px #ff3b3b}}
+.stat{font-variant-numeric:tabular-nums}
+#time{font-size:18px;font-weight:700;margin:0 auto}
+#pauseBtn{pointer-events:auto;width:40px;height:34px;border:0;border-radius:10px;background:rgba(20,24,36,.72);color:#fff;font-size:16px}
+#trait{font-size:12px;opacity:.95;display:none}
+#trait.on{display:inline-block}
+#perf{position:fixed;z-index:5;right:8px;top:calc(max(8px,env(safe-area-inset-top)) + 56px);font-size:11px;opacity:.75;display:none}
+body.playing.dev #perf{display:block}
+#spinBtn{position:fixed;z-index:5;right:18px;bottom:max(22px,env(safe-area-inset-bottom));width:96px;height:96px;border-radius:50%;border:3px solid rgba(255,255,255,.55);color:#fff;font-weight:700;font-size:12px;line-height:1.25;padding:6px;background:conic-gradient(#ffd54a var(--g,0%),rgba(255,255,255,.12) 0);touch-action:none}
+#spinBtn.ready{box-shadow:0 0 18px #ffd54a;border-color:#ffd54a}
+#runBtn{position:fixed;z-index:5;right:126px;bottom:max(30px,env(safe-area-inset-bottom));width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.45);background:rgba(255,255,255,.14);color:#fff;font-weight:600;touch-action:none}
+#runBtn.on{background:rgba(255,215,110,.55)}
+#stick{position:fixed;z-index:5;left:20px;bottom:max(20px,env(safe-area-inset-bottom));width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.3);touch-action:none}
+#knob{position:absolute;left:45px;top:45px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.45)}
+@media (pointer:fine){body.playing #stick,body.playing #runBtn.ingame{display:none}}
+#hurtFx{position:fixed;inset:0;z-index:4;pointer-events:none;opacity:0;box-shadow:inset 0 0 90px 30px rgba(255,40,60,.75)}
+#hurtFx.on{animation:hurt .25s ease-out}
+@keyframes hurt{from{opacity:1}to{opacity:0}}
+#toast{position:fixed;z-index:6;left:50%;top:22%;transform:translateX(-50%);font-size:22px;font-weight:800;color:#ffd54a;text-shadow:0 2px 0 #000,0 0 12px rgba(0,0,0,.6);pointer-events:none;opacity:0;white-space:nowrap}
+#toast.on{animation:toast 1.6s ease-out}
+@keyframes toast{0%{opacity:0;transform:translate(-50%,10px)}12%{opacity:1;transform:translate(-50%,0)}75%{opacity:1}100%{opacity:0}}
+
+/* ---- 화면(메뉴) ---- */
+.overlay{position:fixed;inset:0;z-index:10;display:none;align-items:center;justify-content:center;background:rgba(10,12,20,.55);padding:16px;box-sizing:border-box}
+.overlay.show{display:flex}
+#menu,#select{background:linear-gradient(180deg,rgba(10,12,20,.25),rgba(10,12,20,.75))}
+.card{background:#262c3f;border-radius:16px;padding:20px;width:min(92vw,520px);max-height:92vh;overflow:auto;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.5);box-sizing:border-box}
+.card.wide{width:min(96vw,760px)}
+.card h2{margin:0 0 14px}
+.btns{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.btn{min-height:48px;border:2px solid #ffffff22;background:#323a52;color:#fff;border-radius:12px;font-size:16px;cursor:pointer;padding:8px 14px}
+.btn:hover,.btn:focus-visible{border-color:#ffd54a;outline:none}
+.btn.primary{background:#ffd54a;color:#2a2230;font-weight:700;border-color:#ffd54a}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.armed{border-color:#ff6b6b;background:#5a2a34}
+.row2{display:flex;gap:10px}
+.row2 .btn{flex:1}
+#title{font-size:clamp(34px,7vw,56px);font-weight:800;margin:0;color:#ffd54a;text-shadow:0 4px 0 #6b5a5a,0 8px 24px rgba(0,0,0,.4);letter-spacing:1px}
+#subtitle{margin:6px 0 20px;opacity:.85}
+.howto{font-size:13px;opacity:.75;line-height:1.6;margin-top:14px}
+#charCards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.cc{background:#323a52;border:3px solid transparent;border-radius:14px;padding:10px;cursor:pointer;color:#fff;font-size:12px;line-height:1.5;text-align:left}
+.cc.sel{border-color:#ffd54a;background:#3b4462}
+.cc img{height:100px;width:auto;display:block;margin:0 auto 6px}
+.cc b{font-size:16px;display:block;text-align:center}
+.cc .diff{display:block;text-align:center;opacity:.8;margin-bottom:4px}
+.cc .best{opacity:.75;margin-top:4px;text-align:center}
+#lvOpts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+#lvOpts button{position:relative;flex:1 1 150px;min-height:120px;border:3px solid var(--gc,#ffd54a55);background:#323a52;color:#fff;border-radius:12px;font-size:13px;line-height:1.45;padding:10px 10px 12px;cursor:pointer;text-align:left}
+#lvOpts button b{display:block;font-size:16px;margin:4px 0 2px;color:#fff}
+#lvOpts button em{display:block;font-style:normal;color:#ffd54a;font-size:12px;margin-bottom:4px}
+#lvOpts button .tag{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:8px;background:var(--gc);color:#1d2230}
+#lvOpts button .keep{position:absolute;right:8px;top:8px;font-size:11px;font-style:normal;padding:2px 6px;border-radius:6px;background:#ffffff22}
+#lvOpts button:hover{filter:brightness(1.12)}
+#lvOpts.banish button{border-color:#ff6b6b;border-style:dashed}
+#lvTools{margin-top:14px}
+#lvHint{font-size:12px;opacity:.7;margin-top:8px;min-height:1em}
+#build,#resBuild{font-size:12px;line-height:1.6;text-align:left;background:#1f2434;border-radius:10px;padding:8px 12px;margin:10px 0 0;max-height:30vh;overflow:auto}
+#build b,#resBuild b{color:#ffd54a}
+.set{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid #ffffff14;text-align:left}
+.set small{display:block;opacity:.6}
+.set input[type=range]{width:140px}
+.set input[type=checkbox]{width:22px;height:22px}
+.dev{opacity:.8}
+#resTxt{font-size:17px;line-height:1.7}
+#resBest{opacity:.75;margin-top:6px}
+#help{position:fixed;bottom:4px;left:0;right:0;text-align:center;font-size:11px;opacity:.6;pointer-events:none;display:none}
+@media (pointer:fine){body.playing #help{display:block}}

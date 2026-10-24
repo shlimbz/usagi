@@ -22,7 +22,7 @@ body.playing #spinBtn.ingame,body.playing #runBtn.ingame{display:block}
 #pauseBtn{pointer-events:auto;width:40px;height:34px;border:0;border-radius:10px;background:rgba(20,24,36,.72);color:#fff;font-size:16px}
 #trait{font-size:12px;opacity:.95;display:none}
 #trait.on{display:inline-block}
-#perf{position:fixed;z-index:5;right:8px;top:calc(max(8px,env(safe-area-inset-top)) + 56px);font-size:11px;opacity:.75;display:none}
+#perf{position:fixed;z-index:5;left:8px;top:calc(max(8px,env(safe-area-inset-top)) + 56px);font-size:11px;opacity:.75;display:none}
 body.playing.dev #perf{display:block}
 #spinBtn{position:fixed;z-index:5;right:18px;bottom:max(22px,env(safe-area-inset-bottom));width:96px;height:96px;border-radius:50%;border:3px solid rgba(255,255,255,.55);color:#fff;font-weight:700;font-size:12px;line-height:1.25;padding:6px;background:conic-gradient(#ffd54a var(--g,0%),rgba(255,255,255,.12) 0);touch-action:none}
 #spinBtn.ready{box-shadow:0 0 18px #ffd54a;border-color:#ffd54a}
@@ -152,3 +152,17 @@ body.playing.dev #perf{display:block}
 }
 @media (pointer:coarse){.kbd,.opt .key{display:none}}
 @media (max-width:520px){#lvTools .btn{font-size:13px;padding:6px}}
+
+/* ---- 우측 상단 능력치 패널 ---- */
+#statPanel{position:fixed;z-index:5;right:8px;top:calc(max(8px,env(safe-area-inset-top)) + 54px);flex-direction:column;min-width:138px;max-width:46vw;padding:6px 9px 7px;border-radius:10px;background:rgba(20,24,36,.66);font-size:11.5px;line-height:1.5;pointer-events:auto;cursor:pointer;user-select:none;font-variant-numeric:tabular-nums}
+body.nostat #statPanel{display:none !important}
+#statHead{font-weight:700;font-size:11px;opacity:.85;display:flex;justify-content:space-between;gap:8px}
+#statFold{transition:transform .15s}
+body.statfold #statBody{display:none}
+body.statfold #statFold{transform:rotate(-90deg)}
+#statBody .r{display:flex;justify-content:space-between;gap:10px;white-space:nowrap}
+#statBody .r span{opacity:.75}
+#statBody .r b{font-weight:600}
+#statBody .r.up b{color:#ffd54a}
+#statBody .r.hot b{color:#ff9ac2}
+@media (max-width:520px){#statPanel{top:calc(max(8px,env(safe-area-inset-top)) + 76px);font-size:10.5px;min-width:118px}}

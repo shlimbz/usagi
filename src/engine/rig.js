@@ -4,6 +4,8 @@ import { PRESETS } from '../data/characters.js';
 import { ensureWeaponTexture, weaponMeta } from './textures.js';
 import { ANIMS, CH, sample } from './anim.js';
 
+const POSE_FADE = .12;   // 대기↔이동 그림 전환 시간(초)
+
 /* 공격 판정 순간의 '손 → 창끝' 변환을 미리 계산 (리그 변환과 같은 순서의 2D 행렬 곱)
  * 반환: { a, x } — 창 그림의 (손잡이부터 끝까지) 길이 t 일 때 창끝의 발밑 기준 앞쪽 거리 = a·t + x */
 function hitTipTransform(P) {
@@ -30,6 +32,7 @@ export class Rig {
   build(id) {
     const s = this.scene, P = PRESETS[id], mc = (x, y) => s.make.container({ x, y }, false);
     this.id = id; this.P = P;
+    this.runK = 0;
     this.hitTip = hitTipTransform(P);
     this.root.removeAll(true); this.weaponImg = null; this.flashT = 0; this.flashing = false;
     this.flip = P.flipX ? -1 : 1;
@@ -85,18 +88,26 @@ export class Rig {
     this.root.rotation = sr;
     this.root.x = p.dx + cy * Math.sin(sr);
     this.root.y = cy * (1 - Math.cos(sr)) - p.lift;
-    const poseName = moving && this.imgs.run ? 'run' : 'idle', bodyImg = this.imgs[poseName];
-    for (const pn in this.imgs) this.imgs[pn].visible = pn === poseName;
-    // 모든 캐릭터가 동일한 키프레임을 사용한다. 별도 run 그림이 있는 우사기는
-    // 이동 시 그림도 교체하고, 단일 그림인 치이카와·하치와레는 같은 키프레임으로
-    // 몸의 들썩임/기울기/스쿼시를 적용해 걷기와 뛰기를 구분한다.
+    // 대기 ↔ 이동 그림 전환: POSE_FADE 초 동안 이동 그림을 대기 그림 위에 서서히 겹쳐 그림 (한 프레임에 툭 바뀌지 않게)
+    // 대기 그림은 아래에서 불투명 유지 → 반투명 '유령' 없이 자연스럽게 섞임. 손(무기) 위치도 같은 비율로 이동
+    const hasRun = !!this.imgs.run, target = moving && hasRun ? 1 : 0;
+    const step = dt / POSE_FADE;
+    this.runK = hasRun ? clamp((this.runK ?? 0) + clamp(target - (this.runK ?? 0), -step, step), 0, 1) : 0;
+    const k = this.runK;
     this.hip.setPosition(0, this.hipY - p.bodyY);
     this.hip.rotation = rad(p.bodyRot);
     this.hip.setScale(p.sx, p.sy);
-    bodyImg.setPosition(0, -this.hipY);
-    bodyImg.setScale(bodyImg.baseScale * bodyImg.flipSign, bodyImg.baseScale);
-    bodyImg.rotation = 0;
-    const A = this.anchors[poseName], L = P.armReach ?? 8, a = rad(p.armF), a0 = rad(20);
+    for (const pn in this.imgs) {
+      const im = this.imgs[pn], w = pn === 'run' ? k : 1;
+      im.visible = pn === 'run' ? k > 0 : k < 1;
+      if (!im.visible) continue;
+      im.setAlpha(w);
+      im.setPosition(0, -this.hipY);
+      im.setScale(im.baseScale * im.flipSign, im.baseScale);
+      im.rotation = 0;
+    }
+    const Ai = this.anchors.idle, Ar = this.anchors.run || Ai;
+    const A = { x:Ai.x + (Ar.x - Ai.x) * k, y:Ai.y + (Ar.y - Ai.y) * k }, L = P.armReach ?? 8, a = rad(p.armF), a0 = rad(20);
     this.hand.setPosition(A.x + L * (Math.sin(a) - Math.sin(a0)), A.y - L * (Math.cos(a0) - Math.cos(a)));
     this.weaponHolder.rotation = rad(p.spearAng);
     if (this.weaponImg) this.weaponImg.x = p.spearX;

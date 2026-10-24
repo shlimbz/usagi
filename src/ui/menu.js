@@ -67,7 +67,7 @@ export function renderCharCards() {
 }
 export function syncSettingsUI() {
   $('sVol').value = SET.vol; $('sMusic').value = SET.musicVol; $('sAim').checked = SET.autoAim; $('sShake').checked = SET.shake;
-  $('sDbg').checked = SET.debug; $('sDmg').checked = SET.dmgNum; $('sHpBar').checked = SET.hpBar; $('sStress').value = SET.stress; $('sStressV').textContent = SET.stress + 'x';
+  $('sDbg').checked = SET.debug; $('sDmg').checked = SET.dmgNum; $('sStat').checked = SET.statPanel; $('sHpBar').checked = SET.hpBar; $('sStress').value = SET.stress; $('sStressV').textContent = SET.stress + 'x';
 }
 
 export function initUI() {
@@ -81,6 +81,10 @@ export function initUI() {
   $('sShake').addEventListener('change', e => { SET.shake = e.target.checked; });
   $('sDbg').addEventListener('change', e => { SET.debug = e.target.checked; });
   $('sDmg').addEventListener('change', e => { SET.dmgNum = e.target.checked; });
+  $('sStat').addEventListener('change', e => { SET.statPanel = e.target.checked; document.body.classList.toggle('nostat', !SET.statPanel); });
+  document.body.classList.toggle('nostat', !SET.statPanel);
+  document.body.classList.toggle('statfold', !SET.statOpen);
+  $('statPanel').addEventListener('pointerdown', e => { e.preventDefault(); SET.statOpen = !SET.statOpen; document.body.classList.toggle('statfold', !SET.statOpen); store.save(); });
   $('sHpBar').addEventListener('change', e => { SET.hpBar = e.target.checked; });
   $('sStress').addEventListener('input', e => { SET.stress = +e.target.value; $('sStressV').textContent = SET.stress + 'x'; });
   $('pauseBtn').addEventListener('pointerdown', e => { e.preventDefault(); scene()?.pauseGame(); });

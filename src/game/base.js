@@ -79,7 +79,7 @@ export class SceneBase extends Phaser.Scene {
     if (m !== 'play') { joy.x = joy.y = 0; $('knob').style.transform = ''; }
     if (m === 'pause') $('build').innerHTML = this.buildHtml();
     if (m === 'menu' || m === 'select') SFX.playMusic('title');
-    else if (m === 'play') SFX.playMusic('battle');
+    else if (m === 'play') SFX.playMusic(this.X && this.X.sing ? 'sing' : 'battle');   // 하치와레 '노래하기' 보유 시 혼잣말
     else if (m === 'result') SFX.playMusic('result');
     SFX.duck(m === 'pause' || m === 'levelup' || m === 'settings');
   }

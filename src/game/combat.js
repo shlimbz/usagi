@@ -147,6 +147,7 @@ export class SceneCombat extends SceneWorld {
     }
     if (!extra && Wp.double > 0 && Math.random() < Wp.double) this.extra.push({ t:.1, dir });
     SFX.play('swing'); if (hitList.length) SFX.play('hit');
+    if (!extra) SFX.play(id === 'usagi' && st.fever > 0 ? 'usagi_fever' : id + '_attack');   // 캐릭터 목소리 (sounds.js 의 chance·gap 으로 빈도 조절)
   }
   /* 원형 범위 피해 (폭발 등). onHit: 맞은 적마다 추가 처리 */
   areaHit(x, y, r, base, kb, color, onHit) {
@@ -162,7 +163,7 @@ export class SceneCombat extends SceneWorld {
     const st = this.st;
     st.fever = 6 + (this.X.pururu ? 2 : 0) + (this.has('treat') ? 2 : 0);
     this.pop(this.P.x, this.P.y - 70, '우라 야하!', '#ffe066');
-    SFX.play('usagi_trait');
+    SFX.play('usagi_trait'); SFX.play('usagi_fever');
   }
   endFever() {
     const st = this.st;

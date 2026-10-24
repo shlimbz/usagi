@@ -1,6 +1,6 @@
 {
   "name": "usagi-survivor",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "description": "치이카와 캐릭터로 즐기는 뱀파이어 서바이벌류 웹 게임 (Phaser 3, 빌드 없는 정적 사이트)",
   "type": "module",

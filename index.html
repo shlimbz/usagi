@@ -25,6 +25,8 @@
     <button id="pauseBtn" title="일시정지 (Esc)">❚❚</button>
   </div>
 </div>
+<!-- 현재 능력치 (우측 상단, 눌러서 접기/펴기 · 설정에서 끄기) -->
+<div id="statPanel" class="ingame" title="눌러서 접기/펴기"><div id="statHead">📊 능력치 <span id="statFold">▾</span></div><div id="statBody"></div></div>
 <span class="panel stat" id="perf"></span>
 <div id="stick" class="ingame"><div id="knob"></div></div>
 <button id="runBtn" class="ingame">달리기</button>
@@ -71,6 +73,7 @@
   <label class="set"><span>음악 볼륨<small>assets/audio/music 에 음악을 넣으면 재생</small></span><input id="sMusic" type="range" min="0" max="1" step="0.05"></label>
   <label class="set"><span>가까운 적 자동조준<small>끄면 항상 이동 방향으로 공격</small></span><input id="sAim" type="checkbox"></label>
   <label class="set"><span>화면 흔들림</span><input id="sShake" type="checkbox"></label>
+  <label class="set"><span>능력치 패널<small>게임 중 우측 상단에 현재 능력치</small></span><input id="sStat" type="checkbox"></label>
   <label class="set"><span>피해 숫자 표시<small>적에게 준 피해가 머리 위에 뜸</small></span><input id="sDmg" type="checkbox"></label>
   <label class="set"><span>적 체력바 표시<small>맞은 적 머리 위에 작은 체력바 (정예는 항상 표시)</small></span><input id="sHpBar" type="checkbox"></label>
   <label class="set dev"><span>판정 표시<small>개발용</small></span><input id="sDbg" type="checkbox"></label>

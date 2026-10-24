@@ -38,8 +38,9 @@ css/style.css         화면 스타일
 assets/
   characters/         캐릭터 원본 그림 (PNG)
   enemies/ items/     (비어 있음) 적·아이템 그림을 넣으면 코드로 그린 도형 대신 사용
+  audio/voice/        캐릭터 목소리 (usagi_attack_1~3, usagi_fever, *_special, chiikawa_attack_1~3)
+  audio/music/        배경음악 (battle_bgm1, hachiware_sing)
   audio/sfx/          (비어 있음) 효과음 파일
-  audio/music/        (비어 있음) 배경음악 파일
 src/
   main.js             진입점: Phaser.Game 생성 + UI 연결
   core/               config(공통 상수) · store(저장) · app(게임 인스턴스)
@@ -74,6 +75,7 @@ export const MUSIC = {
   battle: { file:'assets/audio/music/battle.mp3', vol:.5 },
 ```
 
+- `files`: 여러 파일 중 랜덤 · `chance`: 재생 확률(목소리 빈도) · `channel:'voice'`: 새 목소리가 이전 목소리를 끊음
 - `gap`: 같은 소리 최소 간격(초) — 적이 수백 마리여도 소리가 폭주하지 않음
 - `pitch`: 파일 재생 속도를 ±값만큼 랜덤 — 반복음이 덜 단조로움
 - 새 소리: 항목을 추가하고 코드에서 `SFX.play('이름')`

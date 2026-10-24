@@ -116,6 +116,7 @@ export class SceneProgression extends SceneSurvival {
       if ((this.X[o.key] || 0) >= o.def.max) return;
       this.X[o.key] = (this.X[o.key] || 0) + 1;
       if (o.key === 'idea') this.rerolls++;
+      if (o.key === 'sing') SFX.playMusic('sing');          // 노래하기: 배경음악을 '혼잣말'로
     } else {
       const c = o.def;
       if ((this.lvC[c.id] || 0) >= c.max) return;

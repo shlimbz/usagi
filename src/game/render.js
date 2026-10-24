@@ -1,4 +1,4 @@
-import { AIM_RANGE_MUL, GOAL_TIME, PLAYER_R, Q, VIEW_H, VIEW_W, clamp } from '../core/config.js';
+import { AIM_RANGE_MUL, GOAL_TIME, LS_BASE, PLAYER_R, Q, VIEW_H, VIEW_W, clamp } from '../core/config.js';
 import { SET } from '../core/store.js';
 import { PRESETS } from '../data/characters.js';
 import { TUNE } from '../data/tuning.js';
@@ -172,8 +172,32 @@ export class Main extends SceneLoop {
       const sb = $('spinBtn'), cost = this.specialCost();
       sb.style.setProperty('--g', Math.min(100, P.gauge / cost * 100) + '%');
       sb.classList.toggle('ready', P.gauge >= cost);
+      this.statT = (this.statT ?? 0) - .1;
+      if (this.statT <= 0 && SET.statPanel && SET.statOpen && this.D) { this.statT = .25; $('statBody').innerHTML = this.statPanelHtml(); }
       this.fpsT -= .1;
       if (this.fpsT <= 0) { this.fpsT = .5; $('perf').textContent = `적 ${this.enemies.length} · 보석 ${this.gems.length} · ${Math.round(this.game.loop.actualFps)}fps`; }
     }
   }
+  /* 우측 상단 능력치: 한 번 공격 피해, 초당 공격, 사거리·범위, 이동, 치명타, 받는 피해 … (일시 효과로 오른 값은 노란색) */
+  statPanelHtml() {
+    const D = this.D, P = this.P, C = PRESETS[this.rig.id].base, M = this.M, st = this.st;
+    const boost = st.fever > 0 || (D.cour && D.cour.k > .05) || st.cry > 0 || st.ramen > 0 || st.band > 0 || st.mfood > 0 || st.streakT > 0;
+    const row = (icon, k, v, cls = '') => `<div class="r ${cls}"><span>${icon} ${k}</span><b>${v}</b></div>`;
+    const up = boost ? 'up' : '';
+    let h = row('❤️', '체력', `${Math.ceil(P.hp)}/${P.maxHp}`, P.hp < P.maxHp * .3 ? 'hot' : '')
+      + row('💪', '한 방 피해', Math.round(C.dmg * D.dmg), up)
+      + row('⚡', '공격', `${(1 / D.interval).toFixed(2)}회/초`, up)
+      + row('📏', D.lance ? '창 길이' : '사거리', Math.round(D.range), st.fever > 0 ? 'up' : '')
+      + row('↔️', D.lance ? '창 폭' : '휘두름', D.lance ? Math.round(D.width) : `${Math.round(D.arc)}°`, st.fever > 0 ? 'up' : '')
+      + row('👟', '이동', `×${D.spd.toFixed(2)}`, up)
+      + row('🎯', '치명타', `${Math.round(D.crit * 100)}% · ×${D.critDmg.toFixed(1)}`)
+      + row('🛡️', '받는 피해', D.dr < 1 ? `-${Math.round((1 - D.dr) * 100)}%` : '0%');
+    if (M.lsChance > 0) h += row('🩸', '흡혈', `${Math.round(M.lsChance * 100)}% · ${Math.round((LS_BASE + M.lsAmt) * 100)}%`);
+    if (M.luck > 0) h += row('🍀', '행운', `+${Math.round(M.luck * 100)}%`);
+    h += row('🧲', '줍는 범위', Math.round(D.magnet));
+    if (D.cour && D.cour.k > 0) h += row('💗', '용기', `${Math.round(D.cour.k * 100)}%`, 'hot');
+    if (st.fever > 0) h += row('🌟', '우라 야하!', `${st.fever.toFixed(1)}초`, 'up');
+    return h;
+  }
+
 }

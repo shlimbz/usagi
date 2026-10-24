@@ -87,13 +87,14 @@ export class SceneLoop extends SceneProgression {
         if (st.friendHit <= 0) {
           st.friendHit = .6;
           this.friendOffsets().forEach(f => {
-            const C = PRESETS[f.id].base, d = this.aimDir(), fx = P.x + f.ox, fy = P.y + f.oy, half = rad(C.arc / 2 + 20);
-            this.forEnemiesNear(fx, fy, C.range + 40, e => {
-              if (!fanHitsCircle(fx, fy, d.x, d.y, C.range, half, e.x, e.y, e.r)) return;
+            const C = PRESETS[f.id].base, d = this.aimDir(), fx = P.x + f.ox, fy = P.y + f.oy;
+            const sh = { lance:PRESETS[f.id].shape === 'cone', range:C.range, half:rad((C.arc || 0) / 2 + 20), halfW:(C.width || 0) / 2 + 10 };
+            this.forEnemiesNear(fx, fy, C.range + 60, e => {
+              if (!this.inShape(fx, fy, d, sh, e)) return;
               const dd = Math.hypot(e.x - fx, e.y - fy) || 1;
               this.hitEnemy(e, C.dmg, (e.x - fx) / dd, (e.y - fy) / dd, C.kb, STUN_SWING);
             });
-            this.slashes.push({ ang:Math.atan2(d.y, d.x), half, r:C.range, age:0, ox:f.ox, oy:f.oy, color:0xbfe3ff });
+            this.slashes.push(this.slashOf(d, sh, { ox:f.ox, oy:f.oy, color:0xbfe3ff }));
           });
         }
       }
@@ -180,7 +181,7 @@ export class SceneLoop extends SceneProgression {
         continue;
       }
       if (e.burnT > 0) {
-        e.burnT -= dt; e.hp -= e.burnDps * dt;
+        e.burnT -= dt; e.hp -= e.burnDps * dt; e.dmgAcc += e.burnDps * dt;
         if (e.burnT <= 0) e.burnDps = 0;
         if (e.hp <= 0) { this.kill(e); continue; }
       }

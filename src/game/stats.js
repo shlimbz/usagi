@@ -35,8 +35,10 @@ export class SceneStats extends SceneBase {
     if (fever) spd += .4;
     if (st.cry > 0) spd += .1;
     if (X.shiver && P.inv > 0) spd += .2;
-    const arcAdd = Wp.arc + M.arcDeg + M.arcLv * TUNE.arcStep[PRESETS[id].shape];
-    let arc = Math.min(360, C.arc + arcAdd), range = C.range * (1 + M.range + Wp.range);
+    const lance = PRESETS[id].shape === 'cone';
+    let arc = 0, width = 0, range = C.range * (1 + M.range + Wp.range);
+    if (lance) width = C.width + Wp.width + M.arcLv * TUNE.widthStep;            // 마상창: 밑변 폭
+    else arc = Math.min(360, C.arc + Wp.arc + M.arcDeg + M.arcLv * TUNE.arcStep.fan);   // 봉: 부채꼴 각도
     if (fever) { arc = Math.min(360, arc * 1.4); range *= 1.4; }
     let dr = 1;
     for (const v of M.drList) dr *= 1 - v;
@@ -47,7 +49,7 @@ export class SceneStats extends SceneBase {
     dr = Math.max(.4, dr);                                   // 받는 피해 감소 상한 -60%
     const posi = X.posi ? [0, .08, .16, .24][X.posi] * xm : 0;
     return {
-      dmg, interval:Math.max(MIN_INTERVAL, C.cd / (1 + aspd)), arc, half:rad(arc / 2), range,
+      dmg, interval:Math.max(MIN_INTERVAL, C.cd / (1 + aspd)), lance, arc, half:rad(arc / 2), width, halfW:width / 2, range,
       spd, kb:C.kb * (1 + M.kb + Wp.kb), crit:Math.min(1, M.crit + M.luck / 2), critDmg:1.5 + M.critDmg,
       dr, maxHpMul:1 + M.maxhp + posi, magnet:TUNE.magnet * (1 + M.magnet), xp:C.xp * (1 + M.xp + (X.did ? .15 : 0)),
       heal:(1 + M.heal) * (X.resolve ? .5 : 1), gaugeMul:1 + M.gauge + (this.once.medal ? .3 : 0), cour

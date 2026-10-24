@@ -13,7 +13,7 @@
  *           고정 60Hz 시뮬레이션, HUD 10Hz 갱신, 효과음 종류별 재생 간격 제한
  * ===================================================================== */
 
-export const Q = 3, WORLD = matchMedia('(pointer:coarse)').matches ? 1.5 : 2, W = 800, H = 450, S = 1.2;
+export const Q = 3, WORLD = typeof matchMedia === 'function' && matchMedia('(pointer:coarse)').matches ? 1.5 : 2, W = 800, H = 450, S = 1.2;
 export const ZOOM = WORLD * .75;
 export const VIEW_W = W * WORLD / ZOOM, VIEW_H = H * WORLD / ZOOM;
 export const FIXED = 1 / 60, MAX_STEPS = 5;

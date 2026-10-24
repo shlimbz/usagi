@@ -4,7 +4,7 @@ import { SET } from '../core/store.js';
 import { PRESETS } from '../data/characters.js';
 import { STUN_SWING } from '../data/enemies.js';
 import { TUNE } from '../data/tuning.js';
-import { circleHitsCircle, fanHitsCircle, rot } from '../engine/collision.js';
+import { circleHitsCircle, fanHitsCircle, lanceHitsCircle, rot } from '../engine/collision.js';
 import { SceneWorld } from './world.js';
 
 /* 씬 4/9: 피해 처리 · 기본 공격 · 진화 효과 · 우라 야하! */
@@ -24,7 +24,7 @@ export class SceneCombat extends SceneWorld {
       e.stun = Math.max(e.stun, stun / Math.sqrt(e.mass));   // 무거운 적은 경직 짧음
       e.bumped = false;
     }
-    if (crit && e.img.visible && Math.random() < .25) this.pop(e.x, e.y - e.r * 2, Math.round(amt) + '!', '#ffd54a');
+    if (SET.dmgNum) { e.dmgAcc += amt; if (crit) e.dmgCrit = true; }   // 피해 숫자 (render 에서 모아서 표시)
     if (M.lsChance > 0 && Math.random() < M.lsChance && this.st.lsBudget > 0) {   // 흡혈
       const h = Math.min(this.st.lsBudget, amt * (LS_BASE + M.lsAmt));
       this.st.lsBudget -= h; this.heal(h / this.D.heal);
@@ -81,7 +81,14 @@ export class SceneCombat extends SceneWorld {
     }
     return { x:P.aimX, y:P.aimY };
   }
-  attackShape() { return { range:this.D.range, half:this.D.half }; }
+  attackShape() { return this.D; }
+  /* 공격 도형 판정 — 창(sh.lance: 앞으로 뾰족한 삼각형) 또는 봉(부채꼴). sh = { lance, range, half, halfW } */
+  inShape(ox, oy, d, sh, e) {
+    return sh.lance ? lanceHitsCircle(ox, oy, d.x, d.y, sh.range, sh.halfW, e.x, e.y, e.r)
+                    : fanHitsCircle(ox, oy, d.x, d.y, sh.range, sh.half, e.x, e.y, e.r);
+  }
+  /* 판정과 같은 모양의 이펙트 (render 에서 플레이어 위치 + ox/oy 에 그림) */
+  slashOf(d, sh, extra) { return { ang:Math.atan2(d.y, d.x), lance:!!sh.lance, half:sh.half, halfW:sh.halfW, r:sh.range, age:0, ...extra }; }
 
   /* 기본 공격 1회. extra = 야하!·2연타로 생긴 추가 공격 (이 공격에서는 다시 추가 공격·피버 판정 안 함) */
   doAttack(dir, extra) {
@@ -94,13 +101,13 @@ export class SceneCombat extends SceneWorld {
     const hitList = [];
     for (const d of dirs) {
       this.forEnemiesNear(P.x, P.y, D.range + 40, e => {
-        if (e.lastAtk === aid || !fanHitsCircle(P.x, P.y, d.x, d.y, D.range, D.half, e.x, e.y, e.r)) return;
+        if (e.lastAtk === aid || !this.inShape(P.x, P.y, d, D, e)) return;
         e.lastAtk = aid;
         const dd = Math.hypot(e.x - P.x, e.y - P.y) || 1;
         if (hitList.length < 12) hitList.push(e);
         this.hitEnemy(e, C.dmg, (e.x - P.x) / dd, (e.y - P.y) / dd, D.kb * kbMul, STUN_SWING, { mul });
       });
-      this.slashes.push({ ang:Math.atan2(d.y, d.x), half:D.half, r:D.range, age:0, color:st.fever > 0 ? 0xffe066 : 0xffffff });
+      this.slashes.push(this.slashOf(d, D, { color:st.fever > 0 ? 0xffe066 : 0xffffff }));
     }
     // 진화 효과
     if (id === 'hachiware' && Wp.evo) {                       // 푸른 시스테마 EX: 맞은 적 주변 추가타

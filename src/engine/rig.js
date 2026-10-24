@@ -1,7 +1,23 @@
 /* 캐릭터 리그: 원본 그림 + 손에 든 무기 */
-import { clamp, rad } from '../core/config.js';
+import { S, clamp, rad } from '../core/config.js';
 import { PRESETS } from '../data/characters.js';
 import { ensureWeaponTexture, weaponMeta } from './textures.js';
+import { ANIMS, CH, sample } from './anim.js';
+
+/* 공격 판정 순간의 '손 → 창끝' 변환을 미리 계산 (리그 변환과 같은 순서의 2D 행렬 곱)
+ * 반환: { a, x } — 창 그림의 (손잡이부터 끝까지) 길이 t 일 때 창끝의 발밑 기준 앞쪽 거리 = a·t + x */
+function hitTipTransform(P) {
+  const A = ANIMS[P.anim], p = sample(A, A.dur * (A.hitAt ?? .4), { ...CH });
+  const cfg = P.poses.idle, flip = P.flipX ? -1 : 1, L = P.armReach ?? 8, ar = rad(p.armF), a0 = rad(20);
+  const hx = (cfg.hand[0] - cfg.ax) * cfg.scale * flip + L * (Math.sin(ar) - Math.sin(a0));
+  const hy = (cfg.hand[1] - cfg.ay) * cfg.scale - P.hipY - L * (Math.cos(a0) - Math.cos(ar));
+  const mul = (A, B) => [A[0]*B[0]+A[2]*B[1], A[1]*B[0]+A[3]*B[1], A[0]*B[2]+A[2]*B[3], A[1]*B[2]+A[3]*B[3], A[0]*B[4]+A[2]*B[5]+A[4], A[1]*B[4]+A[3]*B[5]+A[5]];
+  const T = (x, y, r = 0, sx = 1, sy = 1) => { const c = Math.cos(r), s = Math.sin(r); return [c*sx, s*sx, -s*sy, c*sy, x, y]; };
+  let M = T(0, 0, 0, S, S);
+  M = mul(M, T(p.dx, 0)); M = mul(M, T(0, P.hipY - p.bodyY, rad(p.bodyRot), p.sx, p.sy));
+  M = mul(M, T(hx, hy)); M = mul(M, T(0, 0, rad(p.spearAng))); M = mul(M, T(p.spearX, 0));
+  return { a:M[0], x:M[4] };
+}
 
 /* ---------- 플레이어 리그 ---------- */
 export class Rig {
@@ -14,6 +30,7 @@ export class Rig {
   build(id) {
     const s = this.scene, P = PRESETS[id], mc = (x, y) => s.make.container({ x, y }, false);
     this.id = id; this.P = P;
+    this.hitTip = hitTipTransform(P);
     this.root.removeAll(true); this.weaponImg = null; this.flashT = 0; this.flashing = false;
     this.flip = P.flipX ? -1 : 1;
     this.hipY = P.hipY; this.spinCy = P.hipY;
@@ -44,9 +61,22 @@ export class Rig {
     if (!s.textures.exists(w.key)) return;
     const m = weaponMeta(s, w), img = s.make.image({ x: 0, y: 0, key: w.key }, false);
     img.setOrigin((m.buttX + (m.tipX - m.buttX) * w.grip) / m.tw, m.axisY / m.th);
-    img.setScale(w.len / (m.tipX - m.buttX));
+    img.baseScale = w.len / (m.tipX - m.buttX);
+    img.setScale(img.baseScale);
     this.weaponHolder.add(img);
     this.weaponImg = img;
+    this.reachScale = 1;
+  }
+  /* 무기 길이를 타격 거리에 맞춤: 공격 판정 순간 창끝이 발밑에서 정확히 reach(판정 사거리) 앞에 오도록 그림 배율 조정.
+   * 무기 그림을 바꿔도 weapon.len·grip 만 맞으면 그대로 동작. 사거리가 늘면 무기도 길어짐 */
+  setReach(reach) {
+    const img = this.weaponImg;
+    if (!img || !(reach > 0)) return;
+    const visible = (reach - this.hitTip.x) / this.hitTip.a;          // 손잡이~끝 보이는 길이
+    const k = clamp(visible / ((1 - this.weapon.grip) * this.weapon.len), .2, 3);
+    if (Math.abs(k - this.reachScale) < .005) return;
+    this.reachScale = k;
+    img.setScale(img.baseScale * k);
   }
   flash(d) { this.flashT = d; }
   apply(p, moving, speed, dt) {

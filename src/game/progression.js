@@ -71,23 +71,29 @@ export class SceneProgression extends SceneSurvival {
     if (!pick.length) pick.push({ kind:'filler', key:'rice', g:'일반' }, { kind:'filler', key:'pouch', g:'일반' });
     return pick;
   }
+  /* 카드 내용: icon · name · badge(종류) · main(굵은 효과, \n 줄바꿈) · sub(작은 보조) · lv/max(레벨 점) */
   describe(o) {
-    const id = this.rig.id, xm = this.xm();
-    if (o.kind === 'weapon') { const Wd = WEAPONS[id], n = this.Wp.lv + 1; return { name:`${Wd.name}`, lv:`무기 Lv${n - 1} → ${n}`, d:Wd.lv[n].d }; }
-    if (o.kind === 'evo') { const e = WEAPONS[id].evo; return { name:e.name, lv:'무기 진화', d:e.d }; }
-    if (o.kind === 'filler') return o.key === 'rice' ? { name:'주먹밥', lv:'', d:'HP 30% 회복' } : { name:'보수 주머니', lv:'', d:'보수 +20' };
-    if (o.kind === 'once') return { name:o.def.name, lv:'한 번만', d:o.def.d };
+    const id = this.rig.id, xm = this.xm(), lance = PRESETS[id].shape === 'cone';
+    if (o.kind === 'weapon') { const Wd = WEAPONS[id], n = this.Wp.lv + 1; return { icon:'⚔️', name:Wd.name, badge:'무기 강화', main:Wd.lv[n].d, lv:n, max:5 }; }
+    if (o.kind === 'evo') { const e = WEAPONS[id].evo; return { icon:'🌟', name:e.name, badge:'무기 진화', main:e.d }; }
+    if (o.kind === 'filler') return o.key === 'rice' ? { icon:'🍙', name:'주먹밥', badge:'', main:'체력 30% 회복' } : { icon:'💰', name:'보수 주머니', badge:'', main:'보수 +20' };
+    if (o.kind === 'relic') return { icon:o.def.icon || '🎁', name:o.def.name, badge:o.def.only ? '전용 유물' : '유물', main:o.def.d };
+    if (o.kind === 'once') return { icon:o.def.icon, name:o.def.name, badge:'한 번만', main:o.def.d };
     if (o.kind === 'excl') {
       const lv = (this.X[o.key] || 0) + 1, c = o.def;
-      return { name:c.name, lv:`${PRESETS[id].name} 전용 · ` + (c.max > 1 ? `Lv${lv - 1} → ${lv}` : '한 번만'), d:c.d(lv) + (xm > 1 ? ' (사진 +20%)' : '') };
+      return { icon:c.icon, name:c.name, badge:`${PRESETS[id].name} 전용`, main:c.d(lv), sub:xm > 1 ? '사진 효과 +20%' : '', lv:c.max > 1 ? lv : 0, max:c.max };
     }
-    const c = o.def, lv = (this.lvC[c.id] || 0) + 1;
-    let d;
-    const stp = TUNE.arcStep[PRESETS[id].shape];
-    if (c.custom) d = PRESETS[id].shape === 'fan' ? `공격 각도 +${stp}° (합계 +${stp * lv}°, 최대 360°)` : `원뿔 각도 +${stp}° (합계 +${stp * lv}°)`;
-    else d = `${c.label} +${pct(c.per)} (합계 +${pct(c.per * lv)})`;
-    if (c.note) d += ` · ${c.note}`;
-    return { name:c.name, lv:`Lv${lv - 1} → ${lv} / 최대 ${c.max}`, d };
+    const c = o.def, lv = (this.lvC[c.id] || 0) + 1, sign = c.minus ? '-' : '+';
+    let main, sub;
+    if (c.custom) {
+      if (lance) { const st = TUNE.widthStep, w0 = PRESETS[id].base.width + this.Wp.width + st * (lv - 1); main = `창 폭 +${st}`; sub = `폭 ${w0} → ${w0 + st}`; }
+      else { const st = TUNE.arcStep.fan; main = `휘두르는 각도 +${st}°`; sub = lv === c.max ? '한 바퀴(360°) 완성!' : '360°까지 넓어짐'; }
+    } else {
+      main = `${c.label} ${sign}${pct(c.per)}`;
+      sub = lv > 1 ? `합계 ${sign}${pct(c.per * (lv - 1))} → ${sign}${pct(c.per * lv)}` : '';
+    }
+    if (c.note) sub = sub ? `${sub} · ${c.note}` : c.note;
+    return { icon:c.icon, name:c.name, badge:lv > 1 ? '강화' : '새 능력', main, sub, lv, max:c.max };
   }
   applyChoice(o) {
     const P = this.P, M = this.M, id = this.rig.id;
@@ -132,7 +138,7 @@ export class SceneProgression extends SceneSurvival {
     }
     this.offer = offer;
     this.renderOffer();
-    SFX.play('levelup');
+    this.revealSound();
     this.setMode('levelup');
   }
   openChest() {
@@ -155,19 +161,26 @@ export class SceneProgression extends SceneSurvival {
     }
     this.offer = this.relics.length >= MAX_RELICS ? [] : offer.map(r => ({ kind:'relic', key:r.id, def:r, g:r.g }));
     this.renderOffer();
-    SFX.play('chest');
+    this.revealSound();
     this.setMode('levelup');
   }
   renderOffer() {
     const box = $('lvOpts'), chest = this.lvKind === 'chest';
-    $('lvTitle').textContent = chest ? '보물상자! 유물을 하나 고르세요' : `레벨 업! (Lv ${this.P.lvl - this.pendingLv + 1})`;
+    $('lvTitle').textContent = chest ? '🎁 보물상자! 유물을 골라요' : `⬆ 레벨 업! Lv ${this.P.lvl - this.pendingLv + 1}`;
     box.innerHTML = '';
     box.classList.toggle('banish', !!this.banishArmed);
+    const pips = (lv, max) => '<span class="on">' + '●'.repeat(lv) + '</span>' + '○'.repeat(Math.max(0, max - lv));
     this.offer.forEach((o, i) => {
-      const info = o.kind === 'relic' ? { name:o.def.name, lv:`유물${o.def.only ? ' · 전용' : ''}`, d:o.def.d } : this.describe(o);
+      const info = this.describe(o), gr = o.kind === 'evo' ? 'gevo' : GRADES[o.g].cls;
       const b = document.createElement('button');
-      b.style.setProperty('--gc', GRADES[o.g].c);
-      b.innerHTML = `<span class="tag">${o.kind === 'evo' ? '진화' : o.g}</span><b>${i + 1}. ${info.name}</b><em>${info.lv}</em>${info.d}`;
+      b.className = `opt ${gr}`;
+      b.style.setProperty('--gc', o.kind === 'evo' ? '#ffd54a' : GRADES[o.g].c);
+      b.style.setProperty('--i', i);
+      b.innerHTML = `<span class="top"><span class="tag">${o.kind === 'evo' ? '진화' : o.g}</span><span class="badge">${info.badge || ''}</span></span>` +
+        `<span class="ico">${info.icon || '✦'}</span><b class="nm">${info.name}</b>` +
+        (info.max > 1 && info.lv ? `<span class="pips">${pips(info.lv, info.max)}</span>` : '') +
+        `<span class="main">${String(info.main).replace(/\n/g, '<br>')}</span>` +
+        (info.sub ? `<span class="sub">${info.sub}</span>` : '') + `<span class="key">${i + 1}</span>`;
       if (!chest && this.has('memo') && !this.memo && o.kind !== 'filler') {
         const k = document.createElement('i'); k.className = 'keep'; k.textContent = '📌 보관';
         k.addEventListener('pointerdown', ev => { ev.preventDefault(); ev.stopPropagation(); btn.tool = 'keep' + i; });
@@ -176,15 +189,22 @@ export class SceneProgression extends SceneSurvival {
       b.addEventListener('pointerdown', ev => { ev.preventDefault(); btn.pick = i; });
       box.appendChild(b);
     });
-    $('bReroll').textContent = `다시 뽑기 ${this.rerolls} (R)`;
-    $('bBanish').textContent = this.banishArmed ? '빼기 취소 (B)' : `빼기 ${this.banishes} (B)`;
+    const kbd = k => ` <span class="kbd">(${k})</span>`;
+    $('bReroll').innerHTML = `🎲 다시 뽑기 ${this.rerolls}` + kbd('R');
+    $('bBanish').innerHTML = (this.banishArmed ? '빼기 취소' : `🚫 빼기 ${this.banishes}`) + kbd('B');
     $('bReroll').style.display = $('bBanish').style.display = chest ? 'none' : '';
     $('bReroll').disabled = this.rerolls <= 0;
     $('bBanish').disabled = this.banishes <= 0 && !this.banishArmed;
     $('bBanish').classList.toggle('armed', !!this.banishArmed);
-    $('bSkip').textContent = chest ? (this.offer.length ? '넘기기 (X)' : '가방이 가득 찼어요 · 보수 +30 (X)') : '넘기기 · 보수 +5 (X)';
-    $('lvHint').textContent = this.banishArmed ? '이번 판에서 뺄 선택지를 누르세요' :
-      chest ? `유물 ${this.relics.length}/${MAX_RELICS}` : `공용 ${this.passiveCount()}/${PASSIVE_SLOTS}종 · 희귀 이상 확정까지 ${Math.max(0, PITY - this.pity)}회`;
+    $('bSkip').innerHTML = (chest ? (this.offer.length ? '넘기기' : '가방 가득 · 보수 +30') : '넘기기 · 보수 +5') + kbd('X');
+    $('lvHint').textContent = this.banishArmed ? '이번 판에서 뺄 카드를 누르세요' :
+      chest ? `유물 ${this.relics.length}/${MAX_RELICS}` : `능력 ${this.passiveCount()}/${PASSIVE_SLOTS}칸 · ${Math.max(0, PITY - this.pity)}번 안에 희귀 이상 확정`;
+  }
+  /* 화면에 나온 카드 중 가장 높은 등급에 맞춰 효과음 */
+  revealSound() {
+    const rank = { '일반':0, '고급':1, '희귀':2, '영웅':3, '전설':4 };
+    const best = Math.max(0, ...this.offer.map(o => o.kind === 'evo' ? 4 : rank[o.g] ?? 0));
+    SFX.play(best >= 4 ? 'reveal_legend' : best >= 3 ? 'reveal_epic' : best >= 2 ? 'reveal_rare' : this.lvKind === 'chest' ? 'chest' : 'levelup');
   }
   levelTool(t) {
     if (this.mode !== 'levelup') return;
@@ -230,19 +250,26 @@ export class SceneProgression extends SceneSurvival {
     else if (this.pendingChest > 0) this.openChest();
     else this.setMode('play');
   }
+  /* 일시정지·결과 화면의 빌드 요약 */
   buildHtml() {
-    const id = this.rig.id, rows = [];
-    rows.push(`<b>${WEAPONS[id].name}</b> Lv${this.Wp.lv}${this.Wp.evo ? ` → ${WEAPONS[id].evo.name}` : ''}`);
-    const com = COMMON.filter(c => this.lvC[c.id]).map(c => `${c.name} ${this.lvC[c.id]}/${c.max}`);
-    rows.push(`<b>공용 ${com.length}/${PASSIVE_SLOTS}</b> ${com.join(' · ') || '없음'}`);
-    const once = ONCE.filter(c => this.once[c.id]).map(c => c.name);
-    if (once.length) rows.push(`<b>한 번만</b> ${once.join(' · ')}`);
-    const ex = EXCL[id].filter(c => this.X[c.id]).map(c => c.max > 1 ? `${c.name} ${this.X[c.id]}/${c.max}` : c.name);
-    rows.push(`<b>전용</b> ${ex.join(' · ') || '없음'}`);
-    rows.push(`<b>유물 ${this.relics.length}/${MAX_RELICS}</b> ${this.relics.map(r => RELICS.find(x => x.id === r).name).join(' · ') || '없음'}`);
-    const D = this.D || this.derive();
-    rows.push(`<b>능력치</b> 피해 ×${D.dmg.toFixed(2)} · 공격 간격 ${D.interval.toFixed(2)}초 · 각도 ${Math.round(D.arc)}° · 사거리 ${Math.round(D.range)} · 치명타 ${pct(D.crit)} · 받는 피해 ×${D.dr.toFixed(2)}`);
-    return rows.join('<br>');
+    const id = this.rig.id, D = this.D || this.derive(), P = this.P;
+    const pips = (lv, max) => `<i>${'●'.repeat(lv)}${'○'.repeat(max - lv)}</i>`;
+    const chip = (icon, name, extra = '') => `<span class="chip">${icon} ${name}${extra}</span>`;
+    const sec = (title, chips) => `<div class="bsec"><h4>${title}</h4><div class="chips">${chips.join('') || '<span class="none">없음</span>'}</div></div>`;
+    const Wd = WEAPONS[id];
+    const out = [];
+    out.push(sec('무기', [chip(this.Wp.evo ? '🌟' : '⚔️', this.Wp.evo ? Wd.evo.name : Wd.name, this.Wp.evo ? '' : pips(this.Wp.lv, 5))]));
+    out.push(sec(`능력 ${this.passiveCount()}/${PASSIVE_SLOTS}`, COMMON.filter(c => this.lvC[c.id]).map(c => chip(c.icon, c.name, pips(this.lvC[c.id], c.max)))));
+    out.push(sec(`${PRESETS[id].name} 전용`, EXCL[id].filter(c => this.X[c.id]).map(c => chip(c.icon, c.name, c.max > 1 ? pips(this.X[c.id], c.max) : ''))
+      .concat(ONCE.filter(c => this.once[c.id]).map(c => chip(c.icon, c.name)))));
+    out.push(sec(`유물 ${this.relics.length}/${MAX_RELICS}`, this.relics.map(r => RELICS.find(x => x.id === r)).filter(Boolean).map(r => chip(r.icon || '🎁', r.name))));
+    const stat = (icon, k, v) => `<div><span>${icon} ${k}</span><b>${v}</b></div>`;
+    out.push(`<div class="bsec"><h4>능력치</h4><div class="stats">` +
+      stat('❤️', '체력', `${Math.ceil(P.hp)}/${P.maxHp}`) + stat('💪', '공격력', `×${D.dmg.toFixed(2)}`) +
+      stat('⚡', '공격 간격', `${D.interval.toFixed(2)}초`) + stat('📏', D.lance ? '창 길이' : '사거리', Math.round(D.range)) +
+      stat('↔️', D.lance ? '창 폭' : '각도', D.lance ? Math.round(D.width) : `${Math.round(D.arc)}°`) + stat('🎯', '치명타', pct(D.crit)) +
+      stat('🛡️', '받는 피해', `${D.dr < 1 ? '-' : ''}${pct(1 - D.dr)}`) + stat('👟', '이동', `×${D.spd.toFixed(2)}`) + `</div></div>`);
+    return out.join('');
   }
 
 }

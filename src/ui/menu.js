@@ -40,18 +40,26 @@ export function buildPortraits(done) {
     img.src = cfg.src;
   });
 }
+/* 카드 능력치 막대에 쓰는 값 (초당 피해 = 피해 ÷ 공격 간격) */
+const STAT_OF = { hp:A => A.hp, atk:A => A.dmg / A.cd, spd:A => A.walk, range:A => A.range };
 export function renderCharCards() {
   const box = $('charCards'); box.innerHTML = '';
   const fmt = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
   CHAR_IDS.forEach((id, i) => {
     const P = PRESETS[id], A = P.base, b = store.data.best[id];
+    // 능력치 막대: 세 캐릭터 중 가장 높은 값 = 꽉 찬 막대
+    const max = k => Math.max(...CHAR_IDS.map(c => STAT_OF[k](PRESETS[c].base)));
+    const bar = (label, k) => `<span>${label}</span><i style="--v:${(STAT_OF[k](A) / max(k)).toFixed(2)}"></i>`;
     const el = document.createElement('div');
     el.className = 'cc' + (UI.char === id ? ' sel' : '');
-    el.innerHTML = `<img src="${PORTRAITS[id] || ''}" alt=""><b>${i + 1}. ${P.name}</b><span class="diff">${P.diff}</span>${P.desc}<br>
-      <b style="display:inline;font-size:12px">특성 ${P.trait}</b> — ${P.traitDesc}<br>
-      <b style="display:inline;font-size:12px">필살기 ${P.spName}</b> — ${P.spDesc}<br>
-      HP ${A.hp} · 피해 ${A.dmg} · 간격 ${A.cd}초 · 사거리 ${A.range} · ${P.shape === 'fan' ? '부채꼴' : '원뿔'} ${A.arc}°
-      <div class="best">${b ? `최고 ${b.cleared ? '클리어 · ' : ''}${fmt(b.time)} · 처치 ${b.kills}` : '기록 없음'}</div>`;
+    el.title = `${P.desc}\n\n특성 ${P.trait}: ${P.traitDesc}\n필살기 ${P.spName}: ${P.spDesc}`;
+    el.innerHTML = `<img src="${PORTRAITS[id] || ''}" alt="">
+      <div class="cc-head"><b>${i + 1}. ${P.name}</b><span class="stars">${'★'.repeat(P.stars)}${'☆'.repeat(3 - P.stars)}<small>${P.diff}</small></span></div>
+      <div class="tagline">${P.tagline}</div>
+      <div class="bars">${bar('체력', 'hp')}${bar('공격', 'atk')}${bar('속도', 'spd')}${bar('사거리', 'range')}</div>
+      <span class="feat"><em>특성</em>${P.trait}<small>${P.traitShort}</small></span>
+      <span class="feat sp"><em>필살기</em>${P.spName}<small>${P.spShort}</small></span>
+      <div class="best">${b ? `🏆 ${b.cleared ? '클리어 · ' : ''}${fmt(b.time)} · 처치 ${b.kills}` : '기록 없음'}</div>`;
     el.addEventListener('click', () => { SFX.init(); SFX.play('click'); scene().setChar(id); renderCharCards(); });
     el.addEventListener('dblclick', () => scene().act('start'));
     box.appendChild(el);
@@ -59,7 +67,7 @@ export function renderCharCards() {
 }
 export function syncSettingsUI() {
   $('sVol').value = SET.vol; $('sMusic').value = SET.musicVol; $('sAim').checked = SET.autoAim; $('sShake').checked = SET.shake;
-  $('sDbg').checked = SET.debug; $('sStress').value = SET.stress; $('sStressV').textContent = SET.stress + 'x';
+  $('sDbg').checked = SET.debug; $('sDmg').checked = SET.dmgNum; $('sHpBar').checked = SET.hpBar; $('sStress').value = SET.stress; $('sStressV').textContent = SET.stress + 'x';
 }
 
 export function initUI() {
@@ -72,6 +80,8 @@ export function initUI() {
   $('sAim').addEventListener('change', e => { SET.autoAim = e.target.checked; });
   $('sShake').addEventListener('change', e => { SET.shake = e.target.checked; });
   $('sDbg').addEventListener('change', e => { SET.debug = e.target.checked; });
+  $('sDmg').addEventListener('change', e => { SET.dmgNum = e.target.checked; });
+  $('sHpBar').addEventListener('change', e => { SET.hpBar = e.target.checked; });
   $('sStress').addEventListener('input', e => { SET.stress = +e.target.value; $('sStressV').textContent = SET.stress + 'x'; });
   $('pauseBtn').addEventListener('pointerdown', e => { e.preventDefault(); scene()?.pauseGame(); });
   $('spinBtn').addEventListener('pointerdown', e => { e.preventDefault(); btn.spin = true; });

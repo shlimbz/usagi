@@ -34,6 +34,10 @@ export const SOUNDS = {
   usagi_trait:       { file:null, vol:1, gap:.5, pitch:0, synth:(s, t) => [660, 880, 1320].forEach((f, i) => s.tone(t, { type:'square', f0:f, dur:.08, g:.1, delay:i * .06 })) },
   // ---- 이벤트 / UI ----
   elite:   { file:null, vol:1, gap:1,   pitch:0, synth:(s, t) => [196, 165, 131].forEach((f, i) => s.tone(t, { type:'sawtooth', f0:f, dur:.22, g:.16, delay:i * .16 })) },
+  // 레벨업·보물상자 카드 공개: 화면에 나온 가장 높은 등급에 맞춰 재생
+  reveal_rare:   { file:null, vol:1, gap:.3, pitch:0, synth:(s, t) => [659, 880, 1175, 1568].forEach((f, i) => s.tone(t, { type:'triangle', f0:f, dur:.16, g:.17, delay:i * .06 })) },
+  reveal_epic:   { file:null, vol:1, gap:.3, pitch:0, synth:(s, t) => { [523, 784, 1046, 1318, 1568].forEach((f, i) => s.tone(t, { type:'triangle', f0:f, dur:.22, g:.17, delay:i * .07 })); s.noise(t, { dur:.5, g:.08, f:6000, f1:9000, q:2 }); } },
+  reveal_legend: { file:null, vol:1, gap:.3, pitch:0, synth:(s, t) => { [392, 523, 659, 784, 1046, 1318, 1568, 2093].forEach((f, i) => s.tone(t, { type:'triangle', f0:f, dur:.3, g:.16, delay:i * .06 })); s.tone(t, { type:'sine', f0:130, f1:65, dur:.6, g:.22 }); s.noise(t, { dur:.9, g:.1, f:5000, f1:10000, q:2, delay:.2 }); } },
   levelup: { file:null, vol:1, gap:.3,  pitch:0, synth:(s, t) => [523, 659, 784, 1046].forEach((f, i) => s.tone(t, { type:'triangle', f0:f, dur:.14, g:.18, delay:i * .08 })) },
   click:   { file:null, vol:1, gap:.03, pitch:0, synth:(s, t) => s.tone(t, { f0:660, f1:880, dur:.05, g:.1 }) },
   over:    { file:null, vol:1, gap:1,   pitch:0, synth:(s, t) => [392, 330, 262, 196].forEach((f, i) => s.tone(t, { type:'triangle', f0:f, dur:.25, g:.2, delay:i * .18 })) },

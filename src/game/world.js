@@ -16,7 +16,7 @@ export class SceneWorld extends SceneStats {
     Object.assign(e, { active:true, id:++this.enemyId, type:T, elite:!!T.elite, x, y, kbx:0, kby:0, stun:0,
                        hp:T.elite ? ENEMY_TYPES.slime.hp * hpK * 25 : T.hp * hpK, dmg:T.dmg * (1 + this.t / 1200),
                        r:T.r, spd:T.spd * (T.elite ? 1 : .9 + Math.random() * .2), mass:T.mass, flash:0, tintState:'', lastAtk:-1,
-                       lastHit:-1, waveId:-1, burnT:0, burnDps:0, hitCd:0, bumped:true, lastDmg:0, sc:T.scale || 1, phase:Math.random() * 6 });
+                       lastHit:-1, waveId:-1, dmgAcc:0, dmgCrit:false, numT:-1, burnT:0, burnDps:0, hitCd:0, bumped:true, lastDmg:0, sc:T.scale || 1, phase:Math.random() * 6 });
     e.maxHp = e.hp;
     const ti = texInfo(T.tex); e.ts = ti.scale;
     e.img.setTexture(T.tex).setOrigin(...ti.origin).setScale(e.sc * e.ts).clearTint();

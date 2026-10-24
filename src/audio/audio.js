@@ -53,7 +53,8 @@ export const SFX = {
     a.gain.setValueAtTime(g, t); a.gain.exponentialRampToValueAtTime(.001, t + dur);
     o.connect(a); a.connect(this.out); o.start(t); o.stop(t + dur + .02);
   },
-  noise(t, { dur = .1, g = .2, f = 1200, f1, q = 1 }) {
+  noise(t, { dur = .1, g = .2, f = 1200, f1, q = 1, delay = 0 }) {
+    t += delay;
     const c = this.ctx, s = c.createBufferSource(), bf = c.createBiquadFilter(), a = c.createGain();
     s.buffer = this.noiseBuf; bf.type = 'bandpass'; bf.Q.value = q;
     bf.frequency.setValueAtTime(f, t); if (f1) bf.frequency.exponentialRampToValueAtTime(f1, t + dur);

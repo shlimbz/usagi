@@ -49,6 +49,10 @@ export class SceneBase extends Phaser.Scene {
     this.texts = [];
     for (let i = 0; i < 16; i++) this.texts.push({ obj:this.add.text(0, 0, '', { fontFamily:'system-ui,sans-serif', fontSize:'15px', fontStyle:'bold', color:'#fff', stroke:'#2a2230', strokeThickness:4 }).setOrigin(.5).setDepth(6e6).setVisible(false), t:-1 });
     this.textNext = 0;
+    this.nums = [];                                    // 피해 숫자 풀 (설정에서 켜고 끔)
+    for (let i = 0; i < 40; i++) this.nums.push({ obj:this.add.text(0, 0, '', { fontFamily:'system-ui,sans-serif', fontSize:'13px', fontStyle:'bold', color:'#fff', stroke:'#2a2230', strokeThickness:3 }).setOrigin(.5).setDepth(6e6 - 1).setVisible(false), t:-1 });
+    this.numNext = 0;
+    this.eliteTexts = [0, 1, 2, 3].map(() => this.add.text(0, 0, '', { fontFamily:'system-ui,sans-serif', fontSize:'11px', fontStyle:'bold', color:'#ffe0d8', stroke:'#2a2230', strokeThickness:3 }).setOrigin(.5).setDepth(5e6 + 1).setVisible(false));
     this.friendImgs = CHAR_IDS.map(id => {
       const cfg = PRESETS[id].poses.idle, im = this.add.image(0, 0, cfg.key).setVisible(false);
       im.setOrigin(cfg.ax / im.width, cfg.ay / im.height); im.baseScale = cfg.scale * S; im.cid = id;
@@ -105,6 +109,8 @@ export class SceneBase extends Phaser.Scene {
     for (const it of this.items) it.img.destroy();
     this.items.length = 0;
     for (const t of this.texts) { t.t = -1; t.obj.setVisible(false); }
+    for (const n of this.nums) { n.t = -1; n.obj.setVisible(false); }
+    for (const t of this.eliteTexts) t.setVisible(false);
     for (const im of this.friendImgs) im.setVisible(false);
     if (this.rig.id !== UI.char) this.rig.build(UI.char);
     else this.rig.flashT = 0;
@@ -114,7 +120,7 @@ export class SceneBase extends Phaser.Scene {
     // 수정치: 공용 선택지·유물·1회성이 더하는 값 (대부분 %를 소수로)
     this.M = { dmg:0, aspd:0, range:0, arcLv:0, arcDeg:0, spd:0, maxhp:0, magnet:0, xp:0, kb:0, crit:0, critDmg:0,
                boss:0, lsChance:0, lsAmt:0, heal:0, coin:0, luck:0, lowHp:0, gauge:0, streak:0, spDmg:0, drList:[] };
-    this.Wp = { lv:1, dmg:0, aspd:0, range:0, arc:0, kb:0, double:0, evo:false };   // 기본 무기
+    this.Wp = { lv:1, dmg:0, aspd:0, range:0, arc:0, width:0, kb:0, double:0, evo:false };   // 기본 무기
     this.lvC = {};        // 공용 성장형 Lv
     this.once = {};       // 1회성 보유
     this.X = {};          // 전용 선택지 Lv
@@ -139,6 +145,11 @@ export class SceneBase extends Phaser.Scene {
   has(rid) { return this.relics.includes(rid); }
   xm() { return this.has('photo') ? 1.2 : 1; }          // 친구들의 사진: 전용 선택지 수치 +20%
   toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.remove('on'); void t.offsetWidth; t.classList.add('on'); }
+  dmgNumber(x, y, v, crit) {
+    const n = this.nums[this.numNext]; this.numNext = (this.numNext + 1) % this.nums.length;
+    n.t = 0; n.x = x; n.y = y;
+    n.obj.setText(Math.round(v) + (crit ? '!' : '')).setColor(crit ? '#ffd54a' : '#ffffff').setFontSize(crit ? 17 : 13).setPosition(x, y).setAlpha(1).setVisible(true);
+  }
   pop(x, y, str, color = '#ffffff') {
     const t = this.texts[this.textNext]; this.textNext = (this.textNext + 1) % this.texts.length;
     t.t = 0; t.x = x; t.y = y;

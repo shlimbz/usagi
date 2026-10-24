@@ -3,6 +3,7 @@ import { SET } from '../core/store.js';
 import { PRESETS } from '../data/characters.js';
 import { TUNE } from '../data/tuning.js';
 import { SLASH_LIFE } from '../engine/anim.js';
+import { lanceCorners } from '../engine/collision.js';
 import { SceneLoop } from './loop.js';
 import { $ } from '../ui/state.js';
 
@@ -11,6 +12,8 @@ export class Main extends SceneLoop {
   /* ================= 그리기 ================= */
   render(dt) {
     const P = this.P, cam = this.cameras.main, inRun = this.mode !== 'menu' && this.mode !== 'select';
+    // 무기 그림 길이 = 실제 타격 거리 (공격 순간 창끝 = 판정 끝). 메뉴에서는 기본 사거리
+    this.rig.setReach(inRun && this.D ? this.D.range : PRESETS[this.rig.id].base.range);
     const camY = P.y - 30;
     cam.centerOn(P.x, camY);
     const L = P.x - VIEW_W / 2 - 80, R = P.x + VIEW_W / 2 + 80, T = camY - VIEW_H / 2 - 80, B = camY + VIEW_H / 2 + 120;
@@ -18,11 +21,13 @@ export class Main extends SceneLoop {
     this.shadow.setPosition(P.x, P.y).setDepth(P.y - .5);
 
     const now = this.t, ov = this.overFx; ov.clear();
+    const showNum = SET.dmgNum && inRun, showBar = SET.hpBar && inRun;
+    let numBudget = 8, bars = 0, eliteN = 0;                // 프레임당 새 숫자 최대 8개, 체력바 최대 400개 (부하 제한)
     for (let i = 0; i < this.enemies.length; i++) {
       const e = this.enemies[i], img = e.img;
       const vis = e.x > L - e.r && e.x < R + e.r && e.y > T && e.y < B + e.r;
       img.visible = vis;
-      if (!vis) continue;
+      if (!vis) { e.dmgAcc = 0; continue; }
       const b = e.stun > 0 ? 0 : Math.sin(now * 9 + e.phase) * .05;
       img.x = e.x; img.y = e.y; img.depth = e.y;
       img.setScale((1 + b) * e.sc * e.ts * (P.x < e.x ? -1 : 1), (1 - b) * e.sc * e.ts);
@@ -34,12 +39,25 @@ export class Main extends SceneLoop {
         else if (want === 'e') img.setTint(e.type.tint);
         else img.clearTint();
       }
-      if (e.elite) {                                       // 정예 체력바
-        const w = 70, y = e.y - e.r * 2.6;
+      const top = e.y - (e.type.barY || e.r * 2.2) * e.sc;  // 머리 위
+      if (e.elite) {                                       // 정예: 큰 체력바 + 숫자 (항상 표시)
+        const w = 70, y = top - 6, k = clamp(e.hp / e.maxHp, 0, 1);
         ov.fillStyle(0x000000, .55).fillRect(e.x - w / 2 - 1, y - 1, w + 2, 7);
-        ov.fillStyle(0xff6b5a, 1).fillRect(e.x - w / 2, y, w * clamp(e.hp / e.maxHp, 0, 1), 5);
+        ov.fillStyle(0xff6b5a, 1).fillRect(e.x - w / 2, y, w * k, 5);
+        const tx = this.eliteTexts[eliteN++];
+        if (tx) tx.setText(Math.ceil(Math.max(0, e.hp)) + '').setPosition(e.x, y - 9).setVisible(true);
+      } else if (showBar && e.hp < e.maxHp && bars++ < 400) {   // 일반 적: 맞은 적만 작은 체력바
+        const w = Math.max(14, e.r * 1.5 * e.sc), y = top - 3, k = clamp(e.hp / e.maxHp, 0, 1);
+        ov.fillStyle(0x000000, .5).fillRect(e.x - w / 2 - .5, y - .5, w + 1, 3.5);
+        ov.fillStyle(k > .5 ? 0x7bd88f : k > .25 ? 0xffd54a : 0xff6b5a, 1).fillRect(e.x - w / 2, y, w * k, 2.5);
+      }
+      if (showNum && e.dmgAcc >= 1 && now - e.numT >= .14 && numBudget > 0) {   // 피해 숫자: 적마다 0.14초씩 모아서 표시
+        numBudget--; e.numT = now;
+        this.dmgNumber(e.x + (Math.random() - .5) * 12, top - 8, e.dmgAcc, e.dmgCrit);
+        e.dmgAcc = 0; e.dmgCrit = false;
       }
     }
+    for (let i = eliteN; i < this.eliteTexts.length; i++) this.eliteTexts[i].setVisible(false);
     for (let i = 0; i < this.gems.length; i++) {
       const g = this.gems[i], vis = g.x > L && g.x < R && g.y > T && g.y < B;
       g.img.visible = vis;
@@ -53,6 +71,12 @@ export class Main extends SceneLoop {
       const k = p.t / .25;
       if (k >= 1) { p.t = -1; p.img.setVisible(false); continue; }
       p.img.setScale(p.size * (.4 + k) / Q).setAlpha(.8 * (1 - k));
+    }
+    for (const n of this.nums) {                         // 피해 숫자: 위로 떠오르며 사라짐
+      if (n.t < 0) continue;
+      n.t += fxDt;
+      if (n.t >= .6) { n.t = -1; n.obj.setVisible(false); continue; }
+      n.obj.setPosition(n.x, n.y - n.t * 34).setAlpha(1 - Math.max(0, n.t - .35) / .25).setScale(n.t < .08 ? 1.25 : 1);
     }
     for (const t of this.texts) {
       if (t.t < 0) continue;
@@ -91,6 +115,14 @@ export class Main extends SceneLoop {
       const k = sl.age / SLASH_LIFE;
       if (k >= 1) { this.slashes.splice(i, 1); continue; }
       const cx = P.x + (sl.ox || 0), cy = P.y + (sl.oy || 0);
+      if (sl.lance) {                                     // 마상창: 판정과 같은 삼각형, 창끝이 앞으로 뻗어 나감
+        const dx = Math.cos(sl.ang), dy = Math.sin(sl.ang), reach = sl.r * (.55 + .45 * Math.min(1, k * 3));
+        const c = lanceCorners(cx, cy, dx, dy, reach, sl.halfW * (reach / sl.r));
+        g.fillStyle(sl.color || 0xffffff, (sl.faint ? .14 : .34) * (1 - k)); g.fillTriangle(...c);
+        g.lineStyle(2.5, sl.color || 0xffffff, .95 * (1 - k)); g.strokeTriangle(...c);
+        g.lineStyle(2, 0xffffff, .9 * (1 - k)); g.lineBetween(cx, cy, c[4], c[5]);
+        continue;
+      }
       const a0 = sl.ang - sl.half, a1 = sl.ang + sl.half, sweep = Math.min(1, k * 3); // 앞 1/3 동안 가장자리가 쓸고 지나감
       g.fillStyle(sl.color || 0xffffff, (sl.faint ? .14 : .32) * (1 - k));
       if (sl.half >= Math.PI - .001) g.fillCircle(cx, cy, sl.r); else { g.slice(cx, cy, sl.r, a0, a1, false); g.fillPath(); }
@@ -111,7 +143,8 @@ export class Main extends SceneLoop {
     if (SET.debug && inRun && this.D) {
       const sh = this.attackShape(), dir = this.aimDir(), ang = Math.atan2(dir.y, dir.x);
       d.lineStyle(1.5, 0xff3b6b, .9);
-      if (sh.half >= Math.PI - .001) d.strokeCircle(P.x, P.y, sh.range);
+      if (sh.lance) d.strokeTriangle(...lanceCorners(P.x, P.y, dir.x, dir.y, sh.range, sh.halfW));
+      else if (sh.half >= Math.PI - .001) d.strokeCircle(P.x, P.y, sh.range);
       else { d.beginPath(); d.slice(P.x, P.y, sh.range, ang - sh.half, ang + sh.half, false); d.strokePath(); }
       d.lineStyle(1, 0xff4fd8, .35); d.strokeCircle(P.x, P.y, sh.range * AIM_RANGE_MUL);
       d.lineStyle(2, 0xff4fd8, this.invulnerable() ? .35 : .95); d.strokeCircle(P.x, P.y, PLAYER_R);

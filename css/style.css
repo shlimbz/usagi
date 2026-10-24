@@ -56,25 +56,8 @@ body.playing.dev #perf{display:block}
 #title{font-size:clamp(34px,7vw,56px);font-weight:800;margin:0;color:#ffd54a;text-shadow:0 4px 0 #6b5a5a,0 8px 24px rgba(0,0,0,.4);letter-spacing:1px}
 #subtitle{margin:6px 0 20px;opacity:.85}
 .howto{font-size:13px;opacity:.75;line-height:1.6;margin-top:14px}
-#charCards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
-.cc{background:#323a52;border:3px solid transparent;border-radius:14px;padding:10px;cursor:pointer;color:#fff;font-size:12px;line-height:1.5;text-align:left}
-.cc.sel{border-color:#ffd54a;background:#3b4462}
-.cc img{height:100px;width:auto;display:block;margin:0 auto 6px}
-.cc b{font-size:16px;display:block;text-align:center}
-.cc .diff{display:block;text-align:center;opacity:.8;margin-bottom:4px}
-.cc .best{opacity:.75;margin-top:4px;text-align:center}
-#lvOpts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
-#lvOpts button{position:relative;flex:1 1 150px;min-height:120px;border:3px solid var(--gc,#ffd54a55);background:#323a52;color:#fff;border-radius:12px;font-size:13px;line-height:1.45;padding:10px 10px 12px;cursor:pointer;text-align:left}
-#lvOpts button b{display:block;font-size:16px;margin:4px 0 2px;color:#fff}
-#lvOpts button em{display:block;font-style:normal;color:#ffd54a;font-size:12px;margin-bottom:4px}
-#lvOpts button .tag{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:8px;background:var(--gc);color:#1d2230}
-#lvOpts button .keep{position:absolute;right:8px;top:8px;font-size:11px;font-style:normal;padding:2px 6px;border-radius:6px;background:#ffffff22}
-#lvOpts button:hover{filter:brightness(1.12)}
-#lvOpts.banish button{border-color:#ff6b6b;border-style:dashed}
 #lvTools{margin-top:14px}
 #lvHint{font-size:12px;opacity:.7;margin-top:8px;min-height:1em}
-#build,#resBuild{font-size:12px;line-height:1.6;text-align:left;background:#1f2434;border-radius:10px;padding:8px 12px;margin:10px 0 0;max-height:30vh;overflow:auto}
-#build b,#resBuild b{color:#ffd54a}
 .set{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid #ffffff14;text-align:left}
 .set small{display:block;opacity:.6}
 .set input[type=range]{width:140px}
@@ -84,3 +67,88 @@ body.playing.dev #perf{display:block}
 #resBest{opacity:.75;margin-top:6px}
 #help{position:fixed;bottom:4px;left:0;right:0;text-align:center;font-size:11px;opacity:.6;pointer-events:none;display:none}
 @media (pointer:fine){body.playing #help{display:block}}
+
+/* ---- 캐릭터 카드 ---- */
+#charCards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.cc{background:#323a52;border:3px solid transparent;border-radius:14px;padding:10px 12px;cursor:pointer;color:#fff;font-size:12px;line-height:1.45;text-align:left;transition:transform .15s}
+.cc:hover{transform:translateY(-2px)}
+.cc.sel{border-color:#ffd54a;background:#3b4462;box-shadow:0 0 16px #ffd54a55}
+.cc img{height:96px;width:auto;display:block;margin:0 auto 4px}
+.cc-head{display:flex;align-items:baseline;justify-content:space-between;gap:6px}
+.cc-head b{font-size:17px}
+.stars{color:#ffd54a;font-size:12px;white-space:nowrap}
+.stars small{color:#fff;opacity:.7;margin-left:3px}
+.tagline{opacity:.8;margin:2px 0 8px}
+.bars{display:grid;grid-template-columns:auto 1fr;gap:3px 8px;align-items:center;margin-bottom:8px}
+.bars span{opacity:.75;font-size:11px}
+.bars i{display:block;height:6px;border-radius:3px;background:#1f2434;overflow:hidden;position:relative}
+.bars i::after{content:"";position:absolute;inset:0;width:calc(var(--v) * 100%);background:linear-gradient(90deg,#5ec8ff,#a37bff);border-radius:3px}
+.feat{display:block;margin-top:4px}
+.feat em{font-style:normal;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;background:#ffd54a;color:#2a2230;margin-right:4px}
+.feat.sp em{background:#ff9ac2}
+.feat small{display:block;opacity:.75;margin-left:2px}
+.cc .best{opacity:.6;margin-top:8px;text-align:center;font-size:11px}
+
+/* ---- 레벨업·보물상자 카드 ---- */
+#lvOpts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;perspective:800px}
+.opt{--gc:#cfd8dc;position:relative;overflow:hidden;flex:1 1 124px;max-width:210px;min-height:172px;border:3px solid color-mix(in srgb,var(--gc) 55%,transparent);background:#2d3448;color:#fff;border-radius:14px;padding:10px 10px 12px;cursor:pointer;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:13px;line-height:1.4;animation:cardIn .35s cubic-bezier(.2,1.4,.4,1) both;animation-delay:calc(var(--i) * 70ms)}
+.opt:hover{filter:brightness(1.15);transform:translateY(-3px)}
+.opt .top{align-self:stretch;display:flex;justify-content:space-between;align-items:center}
+.opt .tag{font-size:11px;font-weight:800;padding:1px 8px;border-radius:8px;background:var(--gc);color:#1d2230}
+.opt .badge{font-size:10px;opacity:.7}
+.opt .ico{font-size:30px;line-height:1.2;margin-top:2px;filter:drop-shadow(0 2px 3px #0008)}
+.opt .nm{font-size:15px;color:#fff;word-break:keep-all}
+.opt .pips{font-size:11px;letter-spacing:2px;color:#ffffff40}
+.opt .pips .on{color:var(--gc)}
+.opt .main{font-size:13px;font-weight:700;color:#ffe9a8;word-break:keep-all}
+.opt .sub{font-size:11px;opacity:.65;word-break:keep-all}
+.opt .key{position:absolute;left:8px;bottom:6px;font-size:10px;opacity:.4}
+.opt .keep{position:absolute;right:6px;bottom:6px;font-size:11px;font-style:normal;padding:2px 6px;border-radius:6px;background:#ffffff22;z-index:2}
+#lvOpts.banish .opt{border-color:#ff6b6b;border-style:dashed}
+@keyframes cardIn{from{opacity:0;transform:translateY(18px) scale(.92)}to{opacity:1;transform:none}}
+
+/* 등급 연출: 일반(g0) < 고급(g1) < 희귀(g2) < 영웅(g3) < 전설(g4) · 진화(gevo) */
+.opt.g1{background:linear-gradient(180deg,#2f4a3b,#2d3448 60%)}
+.opt.g2{background:linear-gradient(180deg,#24435e,#2d3448 65%);box-shadow:0 0 14px #5ec8ff55}
+.opt.g2::after,.opt.g3::after,.opt.g4::after,.opt.gevo::after{content:"";position:absolute;inset:-40%;background:linear-gradient(105deg,transparent 40%,#ffffff40 50%,transparent 60%);transform:translateX(-80%);animation:shine 2.6s ease-in-out infinite;pointer-events:none}
+.opt.g3{background:radial-gradient(circle at 50% 18%,#5b3d86,#2d3448 70%);box-shadow:0 0 18px #c38bff88;animation:cardIn .35s cubic-bezier(.2,1.4,.4,1) both,pulse 1.6s ease-in-out infinite;animation-delay:calc(var(--i) * 70ms),0s}
+.opt.g3::before,.opt.g4::before,.opt.gevo::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.8;
+  background-image:radial-gradient(2px 2px at 20% 30%,#fff,transparent),radial-gradient(1.5px 1.5px at 75% 20%,#fff,transparent),radial-gradient(2px 2px at 60% 75%,#fff,transparent),radial-gradient(1.5px 1.5px at 30% 85%,#fff,transparent),radial-gradient(1.5px 1.5px at 88% 60%,#fff,transparent);
+  animation:twinkle 1.8s ease-in-out infinite alternate}
+.opt.g4,.opt.gevo{border:3px solid transparent;background:linear-gradient(#3d3420,#2d3448 70%) padding-box,conic-gradient(from var(--a,0deg),#ffb300,#fff3b0,#ff7a59,#ffb300,#fff3b0,#ffb300) border-box;
+  box-shadow:0 0 22px #ffb300aa,0 0 50px #ffb30044;animation:legendIn .6s cubic-bezier(.2,1.6,.4,1) both,spinBorder 3s linear infinite,glow 1.2s ease-in-out infinite alternate;animation-delay:calc(var(--i) * 70ms + 120ms),0s,0s}
+.opt.gevo{background:linear-gradient(#2c3a4a,#2d3448 70%) padding-box,conic-gradient(from var(--a,0deg),#ff7ab0,#ffd54a,#7bd88f,#5ec8ff,#c38bff,#ff7ab0) border-box}
+.opt.g4 .nm,.opt.gevo .nm{background:linear-gradient(90deg,#ffe082,#fff,#ffb300);-webkit-background-clip:text;background-clip:text;color:transparent}
+.opt.g4 .ico,.opt.gevo .ico{animation:bob 1.4s ease-in-out infinite}
+@property --a{syntax:'<angle>';inherits:false;initial-value:0deg}
+@keyframes spinBorder{to{--a:360deg}}
+@keyframes shine{0%,30%{transform:translateX(-80%)}70%,100%{transform:translateX(80%)}}
+@keyframes pulse{50%{box-shadow:0 0 30px #c38bffcc}}
+@keyframes glow{to{box-shadow:0 0 34px #ffb300dd,0 0 80px #ffb30066}}
+@keyframes twinkle{from{opacity:.25}to{opacity:.95}}
+@keyframes bob{50%{transform:translateY(-3px) scale(1.08)}}
+@keyframes legendIn{0%{opacity:0;transform:scale(.6) rotate(-4deg)}60%{opacity:1;transform:scale(1.08)}100%{transform:none}}
+@media (prefers-reduced-motion:reduce){.opt,.opt::after,.opt::before,.opt .ico{animation:none!important}}
+
+/* ---- 빌드 요약 (일시정지·결과) ---- */
+#build,#resBuild{font-size:12px;line-height:1.5;text-align:left;background:#1f2434;border-radius:10px;padding:8px 10px;margin:10px 0 0;max-height:36vh;overflow:auto}
+.bsec{margin-bottom:6px}
+.bsec h4{margin:4px 0 3px;font-size:11px;color:#ffd54a;font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{background:#323a52;border-radius:8px;padding:2px 7px;white-space:nowrap}
+.chip i{font-style:normal;font-size:9px;letter-spacing:1px;color:#ffd54a;margin-left:4px}
+.none{opacity:.45}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px}
+.stats div{display:flex;justify-content:space-between}
+.stats span{opacity:.75}
+#pause .btns{display:grid;grid-template-columns:1fr 1fr}
+@media (max-width:520px){
+  .opt{flex:1 1 42%;min-height:150px;padding:8px}
+  .opt .ico{font-size:24px}
+  .opt .nm{font-size:14px}
+  #charCards{grid-template-columns:1fr}
+  .cc{display:grid;grid-template-columns:76px 1fr;column-gap:10px}
+  .cc img{height:72px;grid-row:span 6;align-self:center}
+}
+@media (pointer:coarse){.kbd,.opt .key{display:none}}
+@media (max-width:520px){#lvTools .btn{font-size:13px;padding:6px}}

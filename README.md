@@ -37,7 +37,7 @@ index.html            화면 뼈대(HUD·메뉴·레벨업 카드). 게임 코�
 css/style.css         화면 스타일
 assets/
   characters/         캐릭터 원본 그림 (PNG)
-  enemies/ items/     (비어 있음) 적·아이템 그림을 넣으면 코드로 그린 도형 대신 사용
+  enemies/ items/     (비어 있음) 적·아이템·중립 캐릭터 그림을 넣으면 코드로 그린 임시 도형 대신 사용
   audio/voice/        캐릭터 목소리 (usagi_attack_1~3, usagi_fever, *_special, chiikawa_attack_1~3)
   audio/music/        배경음악 (battle_bgm1, hachiware_sing)
   audio/sfx/          (비어 있음) 효과음 파일
@@ -49,13 +49,18 @@ src/
     weapons.js          기본 무기 Lv2~5, 진화 조건
     choices.js          레벨업 선택지 (등급 가중치, 공용 성장형·1회성, 캐릭터 전용)
     relics.js           유물, 보물상자 등급 확률
-    enemies.js          적 종류, 등장 시각·가중치
+    enemies.js          적 종류(기본4·중간보스3·보스4), 행동·원거리 공격, 보스 등장 시각
+    items.js            맵 아이템 (자석·주먹밥·폭탄·얼음 시계 …) 효과·수명·확률
+    neutrals.js         중립 캐릭터 (노란별·갑옷씨·검은별), 궤도 별
+    shop.js             갑옷씨의 상점 상품
+    trades.js           검은별의 거래 20종
+    training.js         훈련소(메인 메뉴) 영구 강화
     tuning.js           밸런스 조정 값 (적 체력 곡선, 획득 범위, 돌진 크기 …)
     assets.js           이미지 경로
     sounds.js           효과음·배경음악 목록
   engine/             애니메이션 · 리그 · 텍스처 · 공간 격자 · 판정
   game/               씬 (기능별 파일을 상속으로 연결)
-                        base → stats → world → combat → specials → survival → progression → loop → render
+                        base → stats → world → combat → specials → survival → progression → field → loop → render
   audio/audio.js      효과음·음악 엔진
   ui/                 메뉴·설정·입력
 tests/                헤드리스 시뮬레이터 (Node 18+) — 브라우저 없이 실제 게임 로직 실행
@@ -108,13 +113,26 @@ food:    { src:'assets/items/onigiri.png', scale:.2,  origin:[.5, .9] },
 
 ### 레벨업 선택지 추가 (`src/data/choices.js`)
 
-- 공용 성장형: `{ id, g:'고급', name, max:3, per:.1, key:'dmg', label:'피해' }` — `key` 는 `src/game/base.js` 의 `this.M` 수정치 이름
+- 공용 성장형: `{ id, g:'고급', name, max:3, per:.1, key:'dmg', label:'공격력' }` — `key` 는 `src/game/base.js` 의 `this.M` 수정치 이름. `also:{ lsAmt:.03 }` 로 함께 오르는 값, `count:true` 로 개수형(+1개)
 - 1회성: `ONCE` 에 추가하고 효과는 `src/game/progression.js` 의 `applyChoice` 에서 처리
 - 캐릭터 전용: `EXCL[캐릭터id]` 에 추가하고 효과는 `this.X[id]` 로 읽음 (`stats.js` · `combat.js` 등)
 
 ### 유물 추가 (`src/data/relics.js`)
 
-단순 능력치는 `mod:{ aspd:.1 }` 만 쓰면 끝. 특수 효과는 코드에서 `this.has('유물id')` 로 확인합니다. `only:['usagi']` 로 전용 유물.
+단순 능력치는 `mod:{ aspd:.1 }` 만 쓰면 끝. 특수 규칙은 `rule:{ thorns:2 }` (가시 반사·넘치는 기운·구슬 폭발 등, `base.js` 의 `this.R` 목록 참고). 그 밖의 특수 효과는 코드에서 `this.has('유물id')` 로 확인합니다. `only:['usagi']` 로 전용 유물.
+
+### 맵 아이템 · 중립 캐릭터 · 상점 · 거래 · 훈련소
+
+- **맵 아이템** (`items.js`): `life`(사라지기까지 초), `drop`(처치 드롭 가중치), `field`(맵에 저절로 생길 가중치), `color`(바닥 빛). 효과는 `src/game/field.js` 의 `pickItem()`. 경험치 구슬은 사라지지 않음
+- **중립 캐릭터** (`neutrals.js`): 등장 확률·간격, 버텨야 하는 시간(`stay`), 반경. 노란별 = 궤도 별 동료(최대 3), 갑옷씨 = 상점, 검은별 = 거래
+- **궤도 별** (`neutrals.js` 의 `ORBIT`): 개수 = 노란별 동료 + `M.orbs`(빙글빙글 별·별사탕 부적·별자리 지도·별의 계약)
+- **상점** (`shop.js`): `price`, `max`(한 판 구매 한도), `buy(s)` 효과
+- **거래** (`trades.js`): `g`(등급 → 등장 빈도), `ok(s)`(조건), `take(s)` 효과. 위험 요소는 `s.R`(특수 규칙)로
+- **훈련소** (`training.js`): 항목만 추가하면 메뉴에 자동 표시. 보수는 판이 끝날 때 지갑에 저장
+
+### 적 추가 (`src/data/enemies.js`)
+
+`rank`(base/mid/boss), `ai`('chase'·'keep'·'charge'), `shot`(원거리: `pattern` aim·fan·ring·spiral). 중간보스·보스는 `SCHEDULE` 에 시각을 넣으면 등장. 그림은 `assets.js` 의 `enemies` (지금은 코드로 그린 임시 형태). 플레이어의 공격·필살기에 닿은 적 투사체는 사라짐
 
 ### 캐릭터 추가
 
@@ -129,7 +147,7 @@ food:    { src:'assets/items/onigiri.png', scale:.2,  origin:[.5, .9] },
 수치는 `src/data/` 에만 있습니다. 바꾼 뒤 시뮬레이터로 확인하세요.
 
 ```bash
-npm test             # 화면 흐름 + 기능 점검 + 짧은 시뮬레이션
+npm test             # 판정 + 화면 흐름 + 기능 점검 + 새 콘텐츠 점검 + 짧은 시뮬레이션
 npm run sim          # 캐릭터 × 봇 3판씩 10분
 npm run sim:full     # 8판씩 (시간 오래 걸림)
 node tests/sim.mjs --chars chiikawa --bots brave --runs 10 --json out.json

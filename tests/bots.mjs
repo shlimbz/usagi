@@ -6,8 +6,8 @@
  *   idle  : 제자리에 서 있음 (방치 플레이 — 초반에는 죽어야 정상)
  *   chaos : 무작위 이동·무작위 선택·Reroll/Banish/Skip/보관 남발 (오류 찾기용, sim 에서 HP 50% 아래로 안 내려감)
  * ===================================================================== */
-const GOOD = ['power', 'quick', 'wide', 'far', 'tact', 'burst', 'meal', 'armor', 'drain', 'drainAmt', 'endure', 'light', 'pick'];
-const BRAVE_GOOD = ['drain', 'drainAmt', 'endure', 'quick', 'power', 'tact', 'burst', 'wide', 'far', 'armor'];
+const GOOD = ['power', 'quick', 'wide', 'far', 'tact', 'burst', 'meal', 'armor', 'drain', 'orbit', 'endure', 'light', 'pick'];
+const BRAVE_GOOD = ['drain', 'endure', 'quick', 'power', 'tact', 'burst', 'wide', 'far', 'armor', 'orbit'];
 
 function setMove(K, vx, vy, run) {
   const l = Math.hypot(vx, vy) || 1; vx /= l; vy /= l;
@@ -29,6 +29,11 @@ export function makeBot(kind, rng = Math.random) {
     kind,
     /* 레벨업·상자 화면: btn 에 넣을 값 반환 { pick } | { tool } */
     choose(s) {
+      if (s.lvKind === 'trade') {                     // 검은별 거래: chaos 는 무작위, 나머지는 거절
+        if (!s.offer.length) return { tool: 'skip' };
+        if (kind === 'chaos') return rng() < .8 ? { pick: Math.floor(rng() * s.offer.length) } : { tool: 'skip' };
+        return { tool: 'skip' };                     // 일반 봇은 위험한 거래를 거절 (기본 밸런스 측정용)
+      }
       if (s.lvKind === 'chest') return s.offer.length ? { pick: kind === 'chaos' ? Math.floor(rng() * s.offer.length) : 0 } : { tool: 'skip' };
       if (kind === 'chaos') {
         const r = rng();
@@ -41,6 +46,12 @@ export function makeBot(kind, rng = Math.random) {
       const i = pickSmart(s, kind === 'brave' ? BRAVE_GOOD : GOOD);
       if (i < 0 && s.rerolls > 0) return { tool: 'reroll' };
       return { pick: Math.max(0, i) };
+    },
+    /* 갑옷 상점: 살 수 있는 것 중 하나 사고 나감 { buy } | { leave } */
+    shop(s) {
+      const i = s.shopOffer.findIndex(o => !o.sold && s.P.coins >= o.it.price);
+      if (i >= 0 && (kind === 'chaos' ? rng() < .7 : true)) return { buy: i };
+      return { leave: true };
     },
     /* 플레이 중: 이동 키 설정, 필살기를 쓰려면 true */
     move(s, K) {
@@ -58,6 +69,12 @@ export function makeBot(kind, rng = Math.random) {
         const reach = kind === 'kite' ? 260 : 90;
         if (d < reach) { const w = (e.elite ? 4 : 1) / Math.max(15, d) ** 2; vx += dx * w; vy += dy * w; crowd++; }
       }
+      for (const sh of s.shots) {                      // 날아오는 적 투사체를 옆으로 피함 (사람처럼 대충)
+        const dx = P.x - sh.x, dy = P.y - sh.y, d = Math.hypot(dx, dy);
+        if (d > 110 || (sh.vx * dx + sh.vy * dy) <= 0) continue;
+        const sp = Math.hypot(sh.vx, sh.vy) || 1, side = (dx * sh.vy - dy * sh.vx) >= 0 ? 1 : -1;
+        const w = .06 / Math.max(20, d); vx += -sh.vy / sp * side * w * 100; vy += sh.vx / sp * side * w * 100;
+      }
       if (kind !== 'kite') {
         const want = R * .8, hpF = P.hp / P.maxHp;
         if (kind === 'brave' && hpF > .3 && near && crowd < 9 && nd > want * .6) { const dx = near.x - P.x, dy = near.y - P.y, l = Math.hypot(dx, dy) || 1; vx = dx / l; vy = dy / l; }
@@ -70,7 +87,8 @@ export function makeBot(kind, rng = Math.random) {
         if (it.type === 'food' && s.rig.id === 'chiikawa' && kind === 'brave' && P.hp > P.maxHp * .2) continue;
         const d2 = (it.x - P.x) ** 2 + (it.y - P.y) ** 2; if (d2 < gb) { gb = d2; gx = it.x - P.x; gy = it.y - P.y; }
       }
-      if (gb < 300 * 300 && crowd < 3) { const gl = Math.sqrt(gb) || 1; vx += gx / gl * .015; vy += gy / gl * .015; }
+      if (s.neutral && kind !== 'kite') { const n = s.neutral, d2 = (n.x - P.x) ** 2 + (n.y - P.y) ** 2; if (d2 > 60 * 60 && crowd < 4) { gb = Math.min(gb, d2); gx = n.x - P.x; gy = n.y - P.y; } }
+      if (gb < 400 * 400 && crowd < 3) { const gl = Math.sqrt(gb) || 1; vx += gx / gl * .015; vy += gy / gl * .015; }
       if (Math.hypot(vx, vy) < 1e-5) { wander += (rng() - .5) * .2; vx = Math.cos(wander); vy = Math.sin(wander); }
       setMove(K, vx, vy, kind === 'kite' || crowd >= 3);
       return P.gauge >= s.specialCost();

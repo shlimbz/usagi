@@ -6,9 +6,10 @@ import { ANIMS, CH, sample } from './anim.js';
 
 const POSE_FADE = .12;   // 대기↔이동 그림 전환 시간(초)
 
-/* 공격 판정 순간의 '손 → 창끝' 변환을 미리 계산 (리그 변환과 같은 순서의 2D 행렬 곱)
- * 반환: { a, x } — 창 그림의 (손잡이부터 끝까지) 길이 t 일 때 창끝의 발밑 기준 앞쪽 거리 = a·t + x */
-function hitTipTransform(P) {
+/* 공격 판정 순간의 리그 변환을 미리 계산 (리그와 같은 순서의 2D 행렬 곱)
+ * 좌표: 캐릭터가 오른쪽을 볼 때 기준(앞 = +x, 아래 = +y), 발밑 원점, 월드 픽셀
+ * tip(rot, t): 무기를 rot(라디안)만큼 더 돌리고 보이는 길이가 t 일 때 창끝 위치. hx·hy: 손 위치          */
+export function hitTipTransform(P) {
   const A = ANIMS[P.anim], p = sample(A, A.dur * (A.hitAt ?? .4), { ...CH });
   const cfg = P.poses.idle, flip = (P.flipX ? -1 : 1) * (cfg.flipX ? -1 : 1), L = P.armReach ?? 8, ar = rad(p.armF), a0 = rad(20);
   const hx = (cfg.hand[0] - cfg.ax) * cfg.scale * flip + L * (Math.sin(ar) - Math.sin(a0));
@@ -17,8 +18,10 @@ function hitTipTransform(P) {
   const T = (x, y, r = 0, sx = 1, sy = 1) => { const c = Math.cos(r), s = Math.sin(r); return [c*sx, s*sx, -s*sy, c*sy, x, y]; };
   let M = T(0, 0, 0, S, S);
   M = mul(M, T(p.dx, 0)); M = mul(M, T(0, P.hipY - p.bodyY, rad(p.bodyRot), p.sx, p.sy));
-  M = mul(M, T(hx, hy)); M = mul(M, T(0, 0, rad(p.spearAng))); M = mul(M, T(p.spearX, 0));
-  return { a:M[0], x:M[4] };
+  const H = mul(M, T(hx, hy));
+  const tip = (rot, t) => { const m = mul(mul(H, T(0, 0, rad(p.spearAng) + rot)), T(p.spearX, 0)); return [m[4] + m[0] * t, m[5] + m[1] * t]; };
+  const m0 = mul(mul(H, T(0, 0, rad(p.spearAng))), T(p.spearX, 0));
+  return { a:m0[0], b:m0[1], x:m0[4], y:m0[5], hx:H[4], hy:H[5], tip };
 }
 
 /* ---------- 플레이어 리그 ---------- */
@@ -32,7 +35,7 @@ export class Rig {
   build(id) {
     const s = this.scene, P = PRESETS[id], mc = (x, y) => s.make.container({ x, y }, false);
     this.id = id; this.P = P;
-    this.runK = 0;
+    this.runK = 0; this.aimW = 0; this.aimRot = 0; this.aimLen = 1; this.lenNow = 1; this.reach = 0; this.aimKey = null;
     this.hitTip = hitTipTransform(P);
     this.root.removeAll(true); this.weaponImg = null; this.flashT = 0; this.flashing = false;
     this.flip = P.flipX ? -1 : 1;
@@ -76,11 +79,35 @@ export class Rig {
   setReach(reach) {
     const img = this.weaponImg;
     if (!img || !(reach > 0)) return;
-    const visible = (reach - this.hitTip.x) / this.hitTip.a;          // 손잡이~끝 보이는 길이
+    const h = this.hitTip, visible = (reach - h.x) / h.a;          // 손잡이~끝 보이는 길이 (정면 공격 기준)
     const k = clamp(visible / ((1 - this.weapon.grip) * this.weapon.len), .2, 3);
-    if (Math.abs(k - this.reachScale) < .005) return;
-    this.reachScale = k;
-    img.setScale(img.baseScale * k);
+    if (Math.abs(k - this.reachScale) < .005 && reach === this.reach) return;
+    this.reachScale = k; this.reach = reach; this.aimKey = null;
+    img.setScale(img.baseScale * k); this.lenNow = 1;
+  }
+  /* 공격 방향 맞추기: 위·아래·대각선으로 공격할 때도 공격 순간 창끝이 판정 끝(발밑에서 사거리만큼 그 방향)에 오도록
+   * 무기를 손 기준으로 더 돌리고(rot), 길이를 늘이거나 줄임(len). fx = 앞쪽 성분(바라보는 방향 기준), fy = 아래 성분
+   * w = 0~1 (공격 동작 중에만 1 — 동작 시작·끝에서 부드럽게) */
+  setAim(fx, fy, w) {
+    this.aimW = w;
+    if (!(w > 0) || !this.reach) return;
+    const key = Math.round(fx * 200) * 1000 + Math.round(fy * 200);
+    if (key === this.aimKey) return;
+    this.aimKey = key;
+    const h = this.hitTip, R = this.reach, t0 = (R - h.x) / h.a;
+    const thy = h.y + h.b * t0;                                     // 정면 공격 때 창끝 높이 (판정 끝 바로 위, 손 높이)
+    const tx = fx * R, ty = fy * R + thy;                           // 이번 방향의 판정 끝 (같은 높이 차이)
+    let rot = 0, t = t0;                                            // 실제 리그 변환으로 몇 번 고쳐 가며 맞춤 (몸 눌림·늘어남까지 반영)
+    for (let i = 0; i < 6; i++) {
+      const [px, py] = h.tip(rot, t);
+      let d = Math.atan2(ty - h.hy, tx - h.hx) - Math.atan2(py - h.hy, px - h.hx);
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      rot += d;
+      const [qx, qy] = h.tip(rot, t), cur = Math.hypot(qx - h.hx, qy - h.hy), want = Math.hypot(tx - h.hx, ty - h.hy);
+      const [zx, zy] = h.tip(rot, 0), base = Math.hypot(zx - h.hx, zy - h.hy);
+      t = Math.max(t0 * .3, t + (want - cur) / Math.max(1e-3, (cur - base) / Math.max(1e-3, t)));
+    }
+    this.aimRot = rot; this.aimLen = clamp(t / t0, .3, 2.5);
   }
   flash(d) { this.flashT = d; }
   apply(p, moving, speed, dt) {
@@ -109,8 +136,14 @@ export class Rig {
     const Ai = this.anchors.idle, Ar = this.anchors.run || Ai;
     const A = { x:Ai.x + (Ar.x - Ai.x) * k, y:Ai.y + (Ar.y - Ai.y) * k }, L = P.armReach ?? 8, a = rad(p.armF), a0 = rad(20);
     this.hand.setPosition(A.x + L * (Math.sin(a) - Math.sin(a0)), A.y - L * (Math.cos(a0) - Math.cos(a)));
-    this.weaponHolder.rotation = rad(p.spearAng);
-    if (this.weaponImg) this.weaponImg.x = p.spearX;
+    const aw = this.aimW || 0;
+    this.weaponHolder.rotation = rad(p.spearAng) + (aw ? this.aimRot * aw : 0);
+    if (this.weaponImg) {
+      this.weaponImg.x = p.spearX;
+      const ls = 1 + ((aw ? this.aimLen : 1) - 1) * aw;
+      if (Math.abs(ls - (this.lenNow || 1)) > .002) { this.lenNow = ls; this.weaponImg.setScale(this.weaponImg.baseScale * this.reachScale * ls, this.weaponImg.baseScale * this.reachScale); }
+      else if (this.lenNow === undefined) this.lenNow = 1;
+    }
     if (this.flashT > 0) {
       this.flashT -= dt;
       const on = Math.floor(this.flashT / .06) % 2 === 0;

@@ -2,6 +2,8 @@
  *  오디오 엔진 (WebAudio)
  *   - 효과음: SOUNDS[name].file / files(여러 개 중 랜덤) 재생, 없거나 실패하면 synth 합성음
  *            chance(재생 확률) · gap(최소 간격) · channel(같은 채널은 새 소리가 이전 소리를 끊음 — 목소리 겹침 방지)
+ *            prio(채널 우선순위): 더 높은 prio 소리가 아직 재생 중이면 낮은 소리는 나지 않음
+ *                                  (예: 필살기·피버 목소리 중에는 기본 공격 목소리 안 남)
  *   - 배경음악: MUSIC[name].file 을 스트리밍 재생(<audio> → WebAudio). 긴 곡도 메모리를 적게 씀. 장면 전환 시 페이드
  *   - 볼륨: 효과음 / 음악 별도 (설정 화면)
  *   - 브라우저 정책상 첫 클릭·키 입력 때 init() 이 불려야 소리가 남 (src/ui/menu.js 에서 처리)
@@ -70,6 +72,8 @@ export const SFX = {
     const t = this.ctx.currentTime;
     if (t - (this.last[name] ?? -9) < d.gap) return;
     if (d.chance !== undefined && Math.random() > d.chance) return;
+    const prio = d.prio || 0, busy = d.channel && this.channels[d.channel];
+    if (busy && busy.end > t && busy.prio > prio) return;   // 더 중요한 목소리가 재생 중 → 이번에는 말하지 않음
     this.last[name] = t;
     try {
       const list = d.files || (d.file ? [d.file] : []);
@@ -86,10 +90,10 @@ export const SFX = {
         const src = this.ctx.createBufferSource();
         src.buffer = buf; src.playbackRate.value = 1 + (Math.random() * 2 - 1) * (d.pitch || 0);
         src.connect(v); src.start(t);
-        if (d.channel) this.channels[d.channel] = { g:v, src };
+        if (d.channel) this.channels[d.channel] = { g:v, src, prio, end:t + buf.duration / src.playbackRate.value };
       } else {
         d.synth(this, t);
-        if (d.channel) this.channels[d.channel] = { g:v, src:null };
+        if (d.channel) this.channels[d.channel] = { g:v, src:null, prio, end:t + .3 };
       }
     } catch (e) {}
   },

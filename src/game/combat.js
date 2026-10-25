@@ -4,6 +4,8 @@ import { SET } from '../core/store.js';
 import { PRESETS } from '../data/characters.js';
 import { STUN_SWING } from '../data/enemies.js';
 import { TUNE } from '../data/tuning.js';
+import { ITEM_RULES } from '../data/items.js';
+import { BOSS_REWARD } from '../data/enemies.js';
 import { circleHitsCircle, fanHitsCircle, lanceHitsCircle, rot } from '../engine/collision.js';
 import { SceneWorld } from './world.js';
 
@@ -27,7 +29,18 @@ export class SceneCombat extends SceneWorld {
     if (SET.dmgNum) { e.dmgAcc += amt; if (crit) e.dmgCrit = true; }   // 피해 숫자 (render 에서 모아서 표시)
     if (M.lsChance > 0 && Math.random() < M.lsChance && this.st.lsBudget > 0) {   // 흡혈
       const h = Math.min(this.st.lsBudget, amt * (LS_BASE + M.lsAmt));
-      this.st.lsBudget -= h; this.heal(h / this.D.heal);
+      this.st.lsBudget -= h; this.heal(h / this.D.heal, true);
+    }
+    if (crit && this.once.chain && !opt.chain && this.chainBudget > 0) {   // 번개 부적: 치명타 → 주변 2마리 연쇄
+      this.chainBudget--;
+      let a = null, b = null, da = 1e9, db = 1e9;
+      this.forEnemiesNear(e.x, e.y, 120, o => {
+        if (o === e) return;
+        const d = (o.x - e.x) ** 2 + (o.y - e.y) ** 2;
+        if (d > 120 * 120) return;
+        if (d < da) { b = a; db = da; a = o; da = d; } else if (d < db) { b = o; db = d; }
+      });
+      for (const o of [a, b]) if (o) { this.bolts.push({ x0:e.x, y0:e.y - e.r, x1:o.x, y1:o.y - o.r, t:.15 }); this.hitEnemy(o, amt * .6, 0, 0, 0, 0, { raw:true, noCrit:true, chain:true }); }
     }
     if (e.hp <= 0) this.kill(e);
     return amt;
@@ -37,6 +50,7 @@ export class SceneCombat extends SceneWorld {
     if (!e.active) return;
     this.puff(e.x, e.y - e.r, e.r / 10);
     this.spawnGem(e.x, e.y, e.type.xp);
+    if (e === this.boss) this.boss = null;
     P.kills++;
     const gain = 3 * this.D.gaugeMul;
     if (!this.inSp) this.addGauge(gain);
@@ -44,18 +58,22 @@ export class SceneCombat extends SceneWorld {
       const g = Math.min(gain, Math.max(0, TUNE.spRefillCap - this.spGained));
       this.spGained += g; this.addGauge(g);
     }
-    if (Math.random() < .05) P.coins += Math.round(rnd(1, 3) * (1 + this.M.coin));
-    if (Math.random() < .01 * (1 + this.M.heal) * (1 + this.M.luck / 2)) this.spawnItem('food', e.x, e.y);
+    if (Math.random() < .07) this.addCoins(rnd(1, 3));
+    if (Math.random() < ITEM_RULES.dropChance * (1 + this.M.luck / 2)) this.spawnItem(this.pickDrop('drop'), e.x, e.y);
     if (st.fever > 0 && this.X.nonstop) st.fever = Math.min(15, st.fever + .3);
     if (this.M.streak > 0) {                                  // 연속 토벌
       const kt = this.killTimes; kt.push(this.t);
       while (kt.length && kt[0] < this.t - 3) kt.shift();
       if (kt.length >= 10) { st.streakT = 5; kt.length = 0; }
     }
-    if (e.elite) {
+    if (e.elite) {                                            // 중간보스·보스: 보물상자 + 음식 (+ 보스는 보수·사탕 더)
+      const boss = e.type.rank === 'boss';
+      this.log[boss ? 'boss' : 'mid']++;
       this.spawnItem('chest', e.x, e.y);
       this.spawnItem('food', e.x + 24, e.y + 6);
-      P.coins += 30;
+      if (boss) { this.spawnItem('candy', e.x - 24, e.y + 6); for (let i = 1; i < BOSS_REWARD.chests; i++) this.spawnItem('chest', e.x + 30 * i, e.y - 20); }
+      this.addCoins(boss ? BOSS_REWARD.coins : 30);
+      if (boss) this.toast(`${e.type.name} 처치!`);
       if (this.has('tmedal')) { this.addGauge(50); this.heal(P.maxHp * .1); }
       this.puff(e.x, e.y - e.r, 6, 0xffd54a);
       this.shake(200, .008);
@@ -96,6 +114,7 @@ export class SceneCombat extends SceneWorld {
     const aid = ++this.atkId;
     let mul = 1, kbMul = 1;
     if (X.unpred) { mul = rnd(.6, 1.7); if (mul >= 1.65) kbMul = 2; }
+    mul *= this.R.basicMul;                                   // 별의 계약 등: 기본 공격 피해 배율
     const dirs = [dir];
     if (id === 'chiikawa' && Wp.evo) dirs.push(rot(dir, rad(25)), rot(dir, rad(-25)));
     const hitList = [];
@@ -145,17 +164,28 @@ export class SceneCombat extends SceneWorld {
         if (st.fever <= 0 && st.feverCd <= 0 && Math.random() < (X.pururu ? .045 : .03)) this.startFever();
       }
     }
+    for (const d of dirs) this.cutShots(P.x, P.y, d, D);     // 공격에 닿은 적 투사체는 쳐냄
     if (!extra && Wp.double > 0 && Math.random() < Wp.double) this.extra.push({ t:.1, dir });
     SFX.play('swing'); if (hitList.length) SFX.play('hit');
     if (!extra) SFX.play(id === 'usagi' && st.fever > 0 ? 'usagi_fever' : id + '_attack');   // 캐릭터 목소리 (sounds.js 의 chance·gap 으로 빈도 조절)
   }
+  /* 적 투사체 쳐내기: 공격 도형(sh) 또는 원(반경 r, dir 없음)에 닿은 투사체 제거 */
+  cutShots(x, y, dir, sh, r) {
+    let n = 0;
+    for (let i = this.shots.length - 1; i >= 0; i--) {
+      const s = this.shots[i];
+      const hit = dir ? this.inShape(x, y, dir, sh, s) : (s.x - x) ** 2 + (s.y - y) ** 2 <= (r + s.r) ** 2;
+      if (hit) { this.puff(s.x, s.y, .6, 0xff9ab0); this.releaseShot(s); n++; }
+    }
+    return n;
+  }
   /* 원형 범위 피해 (폭발 등). onHit: 맞은 적마다 추가 처리 */
-  areaHit(x, y, r, base, kb, color, onHit) {
+  areaHit(x, y, r, base, kb, color, onHit, raw = false) {
     this.forEnemiesNear(x, y, r + 30, e => {
       if (!circleHitsCircle(x, y, r, e.x, e.y, e.r)) return;
       const d = Math.hypot(e.x - x, e.y - y) || 1;
       if (onHit) onHit(e);
-      this.hitEnemy(e, base, (e.x - x) / d, (e.y - y) / d, kb, STUN_SWING, { raw:false });
+      this.hitEnemy(e, base, (e.x - x) / d, (e.y - y) / d, kb, STUN_SWING, { raw, noCrit:raw });
     });
     this.rings.push({ x, y, r, age:0, color, fixed:true });
   }

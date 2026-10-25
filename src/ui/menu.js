@@ -4,6 +4,7 @@ import { scene } from '../core/app.js';
 import { GOAL_TIME } from '../core/config.js';
 import { SET, store } from '../core/store.js';
 import { CHAR_IDS, PRESETS } from '../data/characters.js';
+import { TRAINING } from '../data/training.js';
 import { $, UI, btn, joy } from './state.js';
 
 /* ---------- HTML UI ---------- */
@@ -64,6 +65,28 @@ export function renderCharCards() {
     el.addEventListener('dblclick', () => scene().act('start'));
     box.appendChild(el);
   });
+}
+/* 훈련소: 지갑 보수로 영구 강화 (src/data/training.js) */
+export function renderTraining() {
+  const box = $('trList'), W = store.data.wallet || 0;
+  $('trWallet').textContent = `💰 지갑 ${W}`;
+  box.innerHTML = '';
+  for (const tr of TRAINING) {
+    const lv = store.data.train[tr.id] || 0, max = tr.cost.length, cost = tr.cost[lv];
+    const fmt = v => tr.key === 'reroll' ? `+${v}회` : `+${Math.round(v * 100)}%`;
+    const el = document.createElement('div');
+    el.className = 'tr';
+    el.innerHTML = `<span class="ic">${tr.icon}</span><b>${tr.name} <i>${'●'.repeat(lv)}${'○'.repeat(max - lv)}</i></b>` +
+      `<button class="btn ${lv < max && W >= cost ? 'primary' : ''}" ${lv >= max || W < cost ? 'disabled' : ''}>${lv >= max ? '완료' : '💰 ' + cost}</button>` +
+      `<small>${tr.label} ${fmt(tr.per * lv)}${lv < max ? ' → ' + fmt(tr.per * (lv + 1)) : ''}</small>`;
+    el.querySelector('button').addEventListener('click', () => {
+      const l = store.data.train[tr.id] || 0, c = tr.cost[l];
+      if (l >= max || (store.data.wallet || 0) < c) return;
+      store.data.wallet -= c; store.data.train[tr.id] = l + 1; store.save();
+      SFX.init(); SFX.play('levelup'); renderTraining();
+    });
+    box.appendChild(el);
+  }
 }
 export function syncSettingsUI() {
   $('sVol').value = SET.vol; $('sMusic').value = SET.musicVol; $('sAim').checked = SET.autoAim; $('sShake').checked = SET.shake;

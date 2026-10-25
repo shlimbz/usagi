@@ -28,7 +28,6 @@ export const PASSIVE_SLOTS = 6, MAX_RELICS = 6, LEGEND_CAP = 2, PITY = 8;
 export const BASE_REROLL = 3, BASE_BANISH = 3;
 export const LS_BASE = .10, LS_CAP = .08;        // 흡혈: 기본 회복량(준 피해 대비), 초당 회복 상한(최대 HP 대비)
 export const XP_NEED = lvl => Math.round(5 + 2 * lvl + .2 * lvl * lvl);   // 다음 레벨까지 필요 경험치 (10분 Lv45~50 목표)
-export const ELITE_TIMES = [120, 240, 360, 480];
 export const CELL = 48;
 export const RING_R = Math.hypot(VIEW_W / 2, VIEW_H / 2) + 50;
 export const DESPAWN_R = RING_R + 380;

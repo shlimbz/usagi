@@ -13,7 +13,9 @@ export const RARE_UP = { '희귀':1, '영웅':1, '전설':1 };
 export const MUL_OWNED = 1.6, MUL_WEAPON = 1.3, MUL_EXCL = 1.2;
 
 /* ---------- 공용 선택지 ----------
- * 성장형: per(Lv당 값) × Lv 만큼 수정치 M[key]에 더함. 한 판에 PASSIVE_SLOTS 종까지            */
+ * 성장형: per(Lv당 값) × Lv 만큼 수정치 M[key]에 더함. 한 판에 PASSIVE_SLOTS 종까지
+ *   also : Lv마다 함께 오르는 다른 수정치 { 키:값 }  · count : 퍼센트가 아니라 개수(예: 궤도 별 +1개)
+ *   용어: '공격력' = 모든 피해에 곱해지는 값 하나로 통일 (무기 강화·유물·거래도 같은 값)            */
 export const COMMON = [
   { id:'meal',    g:'일반', icon:'🍙', name:'든든한 밥',        max:4, per:.15, key:'maxhp',  label:'최대 체력', note:'늘어난 만큼 회복' },
   { id:'power',   g:'일반', icon:'💪', name:'힘내기',           max:5, per:.12, key:'dmg',    label:'공격력' },
@@ -28,10 +30,10 @@ export const COMMON = [
   { id:'tact',    g:'고급', icon:'🎯', name:'토벌 요령',        max:4, per:.15, key:'crit',   label:'치명타 확률' },
   { id:'burst',   g:'고급', icon:'💥', name:'폭발적인 일격',    max:3, per:.30, key:'critDmg',label:'치명타 피해', note:'기본 150%' },
   { id:'giant',   g:'고급', icon:'👹', name:'강적 토벌',        max:3, per:.20, key:'boss',   label:'정예·보스 피해' },
-  { id:'drain',   g:'고급', icon:'🩸', name:'기운 받기',        max:4, per:.08, key:'lsChance', label:'흡혈 확률', note:'때릴 때 확률로 체력 회복' },
+  { id:'drain',   g:'고급', icon:'🩸', name:'기운 받기',        max:4, per:.08, key:'lsChance', label:'흡혈 확률', also:{ lsAmt:.03 }, note:'흡혈량도 +3%씩 (준 피해의 10%부터)' },
   { id:'snack',   g:'고급', icon:'🍡', name:'간식 주머니',      max:3, per:.20, key:'heal',   label:'회복량·음식', note:'회복 효과와 음식 드롭 모두' },
   { id:'coinup',  g:'고급', icon:'💰', name:'토벌 보수',        max:3, per:.20, key:'coin',   label:'보수', shop:true },
-  { id:'drainAmt',g:'희귀', icon:'❤️‍🔥', name:'기운 듬뿍',     max:3, per:.10, key:'lsAmt',  label:'흡혈량', note:'준 피해의 10% + 이만큼' },
+  { id:'orbit',   g:'희귀', icon:'⭐', name:'빙글빙글 별',      max:3, per:1,   key:'orbs',   label:'궤도 별', count:true, note:'캐릭터 주위를 돌며 부딪힌 적 공격' },
   { id:'clover',  g:'희귀', icon:'🍀', name:'네잎클로버',       max:3, per:.15, key:'luck',   label:'행운', note:'좋은 선택지·치명타·상자 등급 ↑' },
   { id:'endure',  g:'희귀', icon:'😣', name:'꾹 참기',          max:3, per:.15, key:'lowHp',  label:'위기 공격력', note:'체력 50% 이하일 때' },
   { id:'charge',  g:'희귀', icon:'🔋', name:'필살 충전',        max:3, per:.20, key:'gauge',  label:'필살기 충전' },
@@ -39,10 +41,13 @@ export const COMMON = [
 ];
 export const ONCE = [
   { id:'miracle', g:'영웅', icon:'✨', name:'작은 기적',      d:'죽을 피해 1번 무효' },
-  { id:'cheer',   g:'영웅', icon:'📣', name:'친구의 응원',    d:'레벨업 선택지 +1개' },
+  { id:'cheer',   g:'영웅', icon:'📣', name:'친구의 조언',    d:'레벨업 선택지 +1개' },
   { id:'toolset', g:'영웅', icon:'🧰', name:'토벌 도구 세트', d:'공격력 +15%\n필살기 피해 +30%' },
   { id:'medal',   g:'전설', icon:'🏅', name:'토벌 훈장',      d:'공격력 +20% · 공격 속도 +15%\n필살기 충전 +30%' },
-  { id:'lunch',   g:'전설', icon:'🍱', name:'끝없는 도시락',  d:'30초마다 주먹밥 등장\n(체력 20% 회복)' }
+  { id:'lunch',   g:'전설', icon:'🍱', name:'끝없는 도시락',  d:'30초마다 주먹밥 등장\n(체력 20% 회복)' },
+  // 특이 조합용 (드묾): 다른 선택지·유물·거래와 엮이면 크게 강해짐
+  { id:'chain',   g:'영웅', icon:'⚡', name:'번개 부적',      d:'치명타 때 주변 적 2마리에\n공격력 60% 번개 연쇄' },
+  { id:'wind',    g:'영웅', icon:'🌬️', name:'바람돌이',       d:'이동 속도 보너스 ×2 만큼 공격력\n달릴 때 부딪힌 적에게 피해' }
 ];
 
 /* ---------- 캐릭터 전용 선택지 ---------- */

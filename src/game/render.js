@@ -2,12 +2,14 @@ import { AIM_RANGE_MUL, GOAL_TIME, LS_BASE, PLAYER_R, Q, VIEW_H, VIEW_W, clamp }
 import { SET } from '../core/store.js';
 import { PRESETS } from '../data/characters.js';
 import { TUNE } from '../data/tuning.js';
+import { ITEM_RULES } from '../data/items.js';
+import { NEUTRALS, NEUTRAL_RULES } from '../data/neutrals.js';
 import { SLASH_LIFE } from '../engine/anim.js';
 import { lanceCorners } from '../engine/collision.js';
 import { SceneLoop } from './loop.js';
 import { $ } from '../ui/state.js';
 
-/* 씬 9/9: 그리기 · HUD */
+/* 씬 10/10: 그리기 · HUD */
 export class Main extends SceneLoop {
   /* ================= 그리기 ================= */
   render(dt) {
@@ -31,17 +33,20 @@ export class Main extends SceneLoop {
       const b = e.stun > 0 ? 0 : Math.sin(now * 9 + e.phase) * .05;
       img.x = e.x; img.y = e.y; img.depth = e.y;
       img.setScale((1 + b) * e.sc * e.ts * (P.x < e.x ? -1 : 1), (1 - b) * e.sc * e.ts);
-      const want = e.flash > 0 ? 'f' : e.burnT > 0 ? 'b' : e.elite ? 'e' : '';
+      const frozen = this.st.freeze > 0, wind = e.chg === 'wind' && Math.floor(now * 14) % 2 === 0;
+      const want = e.flash > 0 ? 'f' : wind ? 'w' : frozen ? 'i' : e.burnT > 0 ? 'b' : e.type.tint ? 'e' : '';
       if (want !== e.tintState) {
         e.tintState = want;
         if (want === 'f') img.setTintFill(0xffffff);
+        else if (want === 'w') img.setTintFill(0xff5a5a);       // 돌진 직전 깜빡임 (피할 신호)
+        else if (want === 'i') img.setTint(0x9fdcff);
         else if (want === 'b') img.setTint(0xff9a3b);
         else if (want === 'e') img.setTint(e.type.tint);
         else img.clearTint();
       }
       const top = e.y - (e.type.barY || e.r * 2.2) * e.sc;  // 머리 위
-      if (e.elite) {                                       // 정예: 큰 체력바 + 숫자 (항상 표시)
-        const w = 70, y = top - 6, k = clamp(e.hp / e.maxHp, 0, 1);
+      if (e.elite) {                                       // 중간보스·보스: 큰 체력바 + 숫자 (항상 표시)
+        const w = e.type.rank === 'boss' ? 96 : 70, y = top - 6, k = clamp(e.hp / e.maxHp, 0, 1);
         ov.fillStyle(0x000000, .55).fillRect(e.x - w / 2 - 1, y - 1, w + 2, 7);
         ov.fillStyle(0xff6b5a, 1).fillRect(e.x - w / 2, y, w * k, 5);
         const tx = this.eliteTexts[eliteN++];
@@ -63,7 +68,47 @@ export class Main extends SceneLoop {
       g.img.visible = vis;
       if (vis) { g.img.x = g.x; g.img.y = g.y; }
     }
-    for (const it of this.items) { it.img.setPosition(it.x, it.y - 3 - Math.abs(Math.sin(it.t * 3)) * 4).setDepth(it.y); }
+    // 맵 아이템: 위아래로 흔들림 + 바닥 빛 링(아이템 색) → 경험치 구슬(작은 마름모)·적 투사체(빨간 구슬)와 구분. 사라지기 전 깜빡임
+    const gf = this.groundFx; gf.clear();
+    for (const it of this.items) {
+      const left = it.life > 0 ? it.life - it.t : 99, blink = left < ITEM_RULES.BLINK ? (Math.floor(it.t * (left < 1.5 ? 12 : 6)) % 2 ? .25 : 1) : 1;
+      it.img.setPosition(it.x, it.y - 3 - Math.abs(Math.sin(it.t * 3)) * 4).setDepth(it.y).setAlpha(blink);
+      if (inRun && it.x > L && it.x < R && it.y > T && it.y < B) {
+        const pulse = .5 + .5 * Math.sin(it.t * 4), c = it.def.color;
+        gf.fillStyle(c, .16 * blink).fillEllipse(it.x, it.y, 34, 12);
+        gf.lineStyle(1.5, c, (.45 + .35 * pulse) * blink).strokeEllipse(it.x, it.y, 26 + pulse * 6, 9 + pulse * 2);
+      }
+    }
+    for (let i = 0; i < this.shots.length; i++) {         // 적 투사체
+      const sh = this.shots[i], vis = sh.x > L && sh.x < R && sh.y > T && sh.y < B;
+      sh.img.visible = vis;
+      if (vis) { sh.img.x = sh.x; sh.img.y = sh.y; sh.img.depth = sh.y + 30; sh.img.rotation = now * 8; }
+    }
+    // 궤도 별 (노란별 동료는 노란별 그림)
+    for (let i = 0; i < this.orbImgs.length; i++) {
+      const im = this.orbImgs[i], o = inRun ? this.orbPos[i] : null;
+      im.setVisible(!!o);
+      if (!o) continue;
+      const key = o.pal ? 'n_ystar' : 'orb_star';
+      if (im.texture.key !== key) im.setTexture(key);
+      im.setPosition(o.x, o.y).setDepth(o.y + 20).setScale(o.pal ? .2 : 1 / 3).setRotation(o.pal ? 0 : now * 6);
+    }
+    // 중립 캐릭터: 진행 링 + 이름·남은 초 + 화면 밖이면 방향 화살표
+    const nt = this.neutral;
+    if (nt && inRun) {
+      const N = NEUTRALS[nt.type], k = nt.prog / NEUTRAL_RULES.stay, bob = Math.sin(nt.t * 3) * 3;
+      nt.img.setPosition(nt.x, nt.y + bob * .3).setDepth(nt.y);
+      gf.lineStyle(2, N.color, .35).strokeCircle(nt.x, nt.y, NEUTRAL_RULES.radius);
+      if (k > 0) { gf.lineStyle(5, N.color, .9); gf.beginPath(); gf.arc(nt.x, nt.y, NEUTRAL_RULES.radius, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2, false); gf.strokePath(); }
+      const near = Math.hypot(P.x - nt.x, P.y - nt.y) < NEUTRAL_RULES.radius;
+      this.neutralText.setText(near ? `${N.name} ${Math.max(0, NEUTRAL_RULES.stay - nt.prog).toFixed(0)}초` : `${N.name}\n${N.hint}`).setPosition(nt.x, nt.y - 50).setVisible(true);
+      const ar = this.neutralArrow();
+      if (ar) {
+        const c = Math.cos(ar.a), s2 = Math.sin(ar.a);
+        ov.fillStyle(N.color, .95).fillTriangle(ar.x + c * 12, ar.y + s2 * 12, ar.x - c * 6 - s2 * 8, ar.y - s2 * 6 + c * 8, ar.x - c * 6 + s2 * 8, ar.y - s2 * 6 - c * 8);
+      }
+    } else this.neutralText.setVisible(false);
+    for (const b of this.bolts) { ov.lineStyle(2.5, 0xbfe9ff, Math.min(1, b.t / .1)); ov.lineBetween(b.x0, b.y0, b.x1, b.y1); }
     const fxDt = this.mode === 'play' ? dt : 0;          // 일시정지 중에는 이펙트도 멈춤
     for (const p of this.puffs) {
       if (p.t < 0) continue;
@@ -96,8 +141,11 @@ export class Main extends SceneLoop {
     } else for (const im of this.friendImgs) im.setVisible(false);
 
     // 바닥 이펙트: 판정과 같은 반경·각도, 현재 플레이어 위치 기준
-    const g = this.groundFx; g.clear();
+    const g = this.groundFx;
     if (inRun) {
+      if (this.st.shield > 0) { g.lineStyle(2, 0xfff2b0, .7); g.strokeEllipse(P.x, P.y - 22, 54, 64); }
+      if (this.st.starInv > 0 || this.st.chaosInv > 0) { g.fillStyle(0xfff27a, .3 + .2 * Math.sin(this.t * 20)); g.fillEllipse(P.x, P.y, 76, 24); }
+      if (this.st.freeze > 0) { g.fillStyle(0x9fdcff, .06); g.fillRect(L, T, R - L, B - T); }
       const cour = this.D ? this.D.cour : null;
       if (cour && cour.k > 0) {                           // 용기 오라
         g.fillStyle(0xff7ab0, .12 + .25 * cour.k); g.fillEllipse(P.x, P.y, 60 + 30 * cour.k, 18 + 9 * cour.k);
@@ -164,10 +212,16 @@ export class Main extends SceneLoop {
       $('time').textContent = String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0') + (left < 60 ? ' 🔥' : '');
       $('kills').textContent = '처치 ' + P.kills;
       $('coin').textContent = '보수 ' + P.coins;
+      const bb = $('bossBar'), bo = this.boss && this.boss.active ? this.boss : null;   // 보스 체력 (화면 위)
+      bb.classList.toggle('on', !!bo);
+      if (bo) { $('bossName').textContent = bo.type.name; $('bossFill').style.width = clamp(bo.hp / bo.maxHp, 0, 1) * 100 + '%'; }
       const tr = $('trait'), id = this.rig.id;
       let txt = '';
       if (id === 'chiikawa' && this.D) txt = `용기 ${Math.round(this.D.cour.k * 100)}%`;
       else if (id === 'usagi' && this.st.fever > 0) txt = `우라 야하! ${this.st.fever.toFixed(1)}초`;
+      if (this.st.freeze > 0) txt += (txt ? ' · ' : '') + `❄️ ${this.st.freeze.toFixed(1)}초`;
+      if (this.st.starInv > 0) txt += (txt ? ' · ' : '') + `⭐ 무적 ${this.st.starInv.toFixed(1)}초`;
+      if (this.st.chaosOn > 0) txt += (txt ? ' · ' : '') + `🌪️ 혼돈 ${this.st.chaosOn.toFixed(0)}초`;
       tr.textContent = txt; tr.classList.toggle('on', !!txt);
       const sb = $('spinBtn'), cost = this.specialCost();
       sb.style.setProperty('--g', Math.min(100, P.gauge / cost * 100) + '%');
@@ -194,6 +248,13 @@ export class Main extends SceneLoop {
       + row('🛡️', '받는 피해', D.dr < 1 ? `-${Math.round((1 - D.dr) * 100)}%` : '0%');
     if (M.lsChance > 0) h += row('🩸', '흡혈', `${Math.round(M.lsChance * 100)}% · ${Math.round((LS_BASE + M.lsAmt) * 100)}%`);
     if (M.luck > 0) h += row('🍀', '행운', `+${Math.round(M.luck * 100)}%`);
+    const R = this.R, orbs = this.orbCount();
+    if (orbs) h += row('⭐', '궤도 별', `${orbs}개`);
+    if (R.thorns > 0) h += row('🌵', '가시 반사', `${Math.round(R.thorns * 100)}%`);
+    if (R.overflow > 0) h += row('⛲', '넘치는 기운', `×${R.overflow}`);
+    if (R.hpDrain > 0) h += row('🩸', '체력 감소', `-${(R.hpDrain * 100).toFixed(1)}%/초`, 'hot');
+    if (R.dmgTaken > 0) h += row('💢', '받는 피해 추가', `+${Math.round(R.dmgTaken * 100)}%`, 'hot');
+    if (R.shieldCd > 0) h += row('🥚', '보호막', this.st.shield > 0 ? '준비됨' : `${Math.max(0, this.st.shieldT).toFixed(1)}초`);
     h += row('🧲', '줍는 범위', Math.round(D.magnet));
     if (D.cour && D.cour.k > 0) h += row('💗', '용기', `${Math.round(D.cour.k * 100)}%`, 'hot');
     if (st.fever > 0) h += row('🌟', '우라 야하!', `${st.fever.toFixed(1)}초`, 'up');

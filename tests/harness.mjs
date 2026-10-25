@@ -33,7 +33,12 @@ export const G = {
   ...(await import('../src/data/tuning.js')),
   ...(await import('../src/core/config.js')),
   ...(await import('../src/core/store.js')),
-  ...(await import('../src/ui/state.js'))
+  ...(await import('../src/ui/state.js')),
+  ...(await import('../src/data/items.js')),
+  ...(await import('../src/data/neutrals.js')),
+  ...(await import('../src/data/shop.js')),
+  ...(await import('../src/data/trades.js')),
+  ...(await import('../src/data/training.js'))
 };
 
 const KEYS = 'LEFT,RIGHT,UP,DOWN,A,D,W,S,SPACE,SHIFT,U,R,P,ESC,ENTER,ONE,TWO,THREE,FOUR,FIVE,B,X'.split(',');
@@ -78,6 +83,13 @@ export function invariants(s) {
   if (s.items.length > 300) bad.push(`items ${s.items.length}`);
   for (const k of ['slashes', 'rings', 'waves', 'trails', 'extra']) if (s[k].length > 600) bad.push(`${k} ${s[k].length}`);
   for (const k in s.st) if (!fin(s.st[k]) && typeof s.st[k] === 'number') bad.push(`st.${k}=${s.st[k]}`);
-  if (!['menu', 'select', 'play', 'pause', 'settings', 'levelup', 'result'].includes(s.mode)) bad.push(`mode ${s.mode}`);
+  if (!['menu', 'select', 'play', 'pause', 'settings', 'levelup', 'result', 'shop', 'training'].includes(s.mode)) bad.push(`mode ${s.mode}`);
+  if (s.shots.length + s.shotPool.length !== G.SHOT_RULES.max) bad.push(`shot pool leak ${s.shots.length}+${s.shotPool.length}`);
+  for (const sh of s.shots) if (!fin(sh.x) || !fin(sh.y) || !sh.active) { bad.push('shot bad'); break; }
+  for (const k in s.M) if (typeof s.M[k] === 'number' && !fin(s.M[k])) bad.push(`M.${k}=${s.M[k]}`);
+  for (const k in s.R) if (typeof s.R[k] === 'number' && !fin(s.R[k])) bad.push(`R.${k}=${s.R[k]}`);
+  if (s.pals > 3) bad.push(`pals ${s.pals}`);
+  if (s.P.coins < 0) bad.push(`coins ${s.P.coins}`);
+  for (const it of s.items) if (it.life > 0 && it.t > it.life + .1) { bad.push(`item ${it.type} not expired`); break; }
   return bad;
 }

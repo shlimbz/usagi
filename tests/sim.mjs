@@ -33,6 +33,9 @@ export function runOne(cid, botKind, sec = SEC) {
       if (s.mode === 'levelup') {
         const c = bot.choose(s);
         if (c.pick !== undefined) { G.btn.pick = c.pick; r.picks++; } else G.btn.tool = c.tool;
+      } else if (s.mode === 'shop') {
+        const c = bot.shop(s);
+        if (c.buy !== undefined) G.btn.buy = c.buy; else s.leaveShop();
       } else if (s.mode === 'play') {
         if (bot.move(s, K) && frames % 10 === 0) g.press('SPACE');
       }
@@ -48,6 +51,7 @@ export function runOne(cid, botKind, sec = SEC) {
     if (frames % CHECK_EVERY === 0) { const b = invariants(s); if (b.length && r.inv.length < 5) r.inv.push(`t=${s.t.toFixed(1)} ` + b.join('; ')); }
     for (const m of [60, 180, 300, 450, 600]) if (!r.marks[m] && s.t >= m) r.marks[m] = s.P.lvl;
   }
+  r.log = { ...s.log, trades: s.tradesTaken.size, pals: s.pals, orbs: s.orbCount() };
   Object.assign(r, { t: s.t, lvl: s.P.lvl, kills: s.P.kills, died: s.mode === 'result' && !s.P.alive && s.t < sec - .1, cleared: s.t >= sec - .1 || (s.mode === 'result' && s.P.alive) });
   r.stepAvg = r.stepMs / Math.max(1, r.steps);
   return r;
@@ -67,6 +71,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(`${pad(cid, 9)} ${pad(bot, 5)} 생존 ${surv}/${RUNS}  사망시각 [${deaths.join(',')}]  레벨 중앙값 ${med(rs.map(r => r.lvl))} (5분 ${med(rs.map(r => r.marks[300] ?? 0))})` +
       `  처치 ${med(rs.map(r => r.kills))}  저HP ${Math.round(med(rs.map(r => r.low)))}s  적최대 ${Math.max(...rs.map(r => r.maxEnemies))}` +
       `  step ${med(rs.map(r => r.stepAvg)).toFixed(2)}ms(max ${Math.max(...rs.map(r => r.stepMax)).toFixed(1)})` +
+      `  보스 ${rs.reduce((a, r) => a + r.log.boss, 0)} 중간보스 ${rs.reduce((a, r) => a + r.log.mid, 0)} 중립 ${rs.reduce((a, r) => a + r.log.neutrals, 0)} 구매 ${rs.reduce((a, r) => a + r.log.shop, 0)} 거래 ${rs.reduce((a, r) => a + r.log.trades, 0)}` +
       `${rs.some(r => r.errors.length) ? '  ❌ERR ' + rs.flatMap(r => r.errors)[0] : ''}${rs.some(r => r.inv.length) ? '  ⚠INV ' + rs.flatMap(r => r.inv)[0] : ''}`);
   }
   const errs = all.filter(r => r.errors.length || r.inv.length).length;

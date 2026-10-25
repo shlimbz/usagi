@@ -25,12 +25,14 @@
     <button id="pauseBtn" title="일시정지 (Esc)">❚❚</button>
   </div>
 </div>
+<!-- 보스 체력 (보스가 있을 때만) -->
+<div id="bossBar"><b id="bossName"></b><div id="bossTrack"><div id="bossFill"></div></div></div>
 <!-- 현재 능력치 (우측 상단, 눌러서 접기/펴기 · 설정에서 끄기) -->
 <div id="statPanel" class="ingame" title="눌러서 접기/펴기"><div id="statHead">📊 능력치 <span id="statFold">▾</span></div><div id="statBody"></div></div>
 <span class="panel stat" id="perf"></span>
 <div id="stick" class="ingame"><div id="knob"></div></div>
 <button id="runBtn" class="ingame">달리기</button>
-<button id="spinBtn" class="ingame">필살기</button>
+<button id="spinBtn" class="ingame">필살!</button>
 <div id="help">WASD/방향키 이동 · Shift 달리기 · 공격은 자동 · Space 필살기(게이지) · Esc 일시정지</div>
 
 <!-- 메인 메뉴 -->
@@ -39,6 +41,7 @@
   <p id="subtitle">몰려오는 적을 피해 <b id="goalTxt">10분</b> 동안 살아남으세요</p>
   <div class="btns" style="max-width:320px;margin:0 auto">
     <button class="btn primary" data-act="toSelect">시작하기</button>
+    <button class="btn" data-act="training">🏋️ 훈련소</button>
     <button class="btn" data-act="settings">설정</button>
   </div>
   <div class="howto">이동: WASD·방향키 (모바일: 왼쪽 조이스틱)<br>공격: 자동 — 가까운 적, 없으면 이동 방향<br>필살기: 게이지가 차면 Space (모바일: 오른쪽 버튼)</div>
@@ -94,6 +97,24 @@
     <button class="btn" id="bSkip">넘기기 (X)</button>
   </div>
   <div id="lvHint"></div>
+</div></div>
+
+<!-- 갑옷씨의 상점 (판 중간) -->
+<div class="overlay" id="shop"><div class="card wide">
+  <h2>🛡️ 갑옷씨의 상점</h2>
+  <div id="shopCoins" class="wallet"></div>
+  <div id="shopOpts"></div>
+  <div class="row2" style="margin-top:14px"><button class="btn primary" data-act="shopLeave">나가기 <span class="kbd">(X)</span></button></div>
+  <div class="hint">보수로 사요 · 한 번 나가면 이 상점은 닫혀요</div>
+</div></div>
+
+<!-- 훈련소 (메인 메뉴) -->
+<div class="overlay" id="training"><div class="card wide">
+  <h2>🏋️ 훈련소</h2>
+  <div id="trWallet" class="wallet"></div>
+  <div id="trList"></div>
+  <div class="hint">판이 끝나면 그 판의 보수가 지갑에 쌓여요 · 모든 캐릭터에 적용</div>
+  <div class="btns"><button class="btn primary" data-act="toMenu">돌아가기</button></div>
 </div></div>
 
 <!-- 결과 -->

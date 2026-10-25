@@ -46,6 +46,7 @@ export class SceneSpecials extends SceneCombat {
       this.hitEnemy(e, this.spDmg() * 3, (e.x - P.x) / d, (e.y - P.y) / d, 560, STUN_SPIN);
     });
     this.rings.push({ r:R, age:0, color:0xfff2b0 });
+    this.cutShots(P.x, P.y, null, null, R);
     this.hitstop = hits ? .05 : 0;
     this.shake(140, hits ? .006 : .003);
   }
@@ -78,6 +79,7 @@ export class SceneSpecials extends SceneCombat {
         const side = ((e.x - P.x) * nx + (e.y - P.y) * ny) >= 0 ? 1 : -1;
         this.hitEnemy(e, base, nx * side, ny * side, 520, STUN_SPIN);
       });
+      this.cutShots(P.x, P.y, null, null, TUNE.dash.w / 2 + 20);
       if (k >= 1) {
         if (X.guard) { this.trails.push({ x0:dsh.sx, y0:dsh.sy, x1:P.x, y1:P.y, t:3, tick:0 }); this.st.courMax = 4; }
         this.dash = null; this.st.postInv = .3; this.atkTimer = Math.min(this.atkTimer, .1);
@@ -90,6 +92,7 @@ export class SceneSpecials extends SceneCombat {
       while (r.next <= 0 && r.t < r.dur) {
         r.next += .12;
         const a = Math.random() * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a), aid = ++this.atkId;
+        r.dir = { x:dx, y:dy };
         this.forEnemiesNear(P.x, P.y, sh.range + 40, e => {
           if (!this.inShape(P.x, P.y, { x:dx, y:dy }, sh, e)) return;
           const d = Math.hypot(e.x - P.x, e.y - P.y) || 1;
@@ -97,6 +100,7 @@ export class SceneSpecials extends SceneCombat {
           this.hitEnemy(e, this.spDmg() * .7, (e.x - P.x) / d, (e.y - P.y) / d, 800, STUN_SPIN);
         });
         this.slashes.push(this.slashOf({ x:dx, y:dy }, sh, { color:0x9fd3ff }));
+        this.cutShots(P.x, P.y, { x:dx, y:dy }, sh);
         if (Math.abs(dx) > .15) P.dir = Math.sign(dx);
         this.anim.play('attack_thrust', true);
         SFX.play('swing');
@@ -114,6 +118,7 @@ export class SceneSpecials extends SceneCombat {
         e.waveId = w.id;
         this.hitEnemy(e, w.dmg, (e.x - w.x) / (d || 1), (e.y - w.y) / (d || 1), 520, STUN_SPIN);
       });
+      this.cutShots(w.x, w.y, null, null, w.r);
       if (w.r >= w.max) this.waves.splice(i, 1);
     }
     // 분홍 충격 자국 (모두를 지키는 용기)

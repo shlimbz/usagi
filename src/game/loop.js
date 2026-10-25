@@ -5,12 +5,12 @@ import { STUN_SWING } from '../data/enemies.js';
 import { TUNE } from '../data/tuning.js';
 import { ANIMS } from '../engine/anim.js';
 import { fanHitsCircle } from '../engine/collision.js';
-import { SceneProgression } from './progression.js';
+import { SceneField } from './field.js';
 import { renderCharCards } from '../ui/menu.js';
 import { btn, joy } from '../ui/state.js';
 
-/* 씬 8/9: 메인 루프 · 입력 · 타이머 · 이동 · 적 AI · 줍기 */
-export class SceneLoop extends SceneProgression {
+/* 씬 9/10: 메인 루프 · 입력 · 타이머 · 이동 · 적 AI · 줍기 */
+export class SceneLoop extends SceneField {
   /* ================= 메인 루프 ================= */
   update(time, delta) {
     const dts = Math.min(delta / 1000, .1), k = this.keys, JD = Phaser.Input.Keyboard.JustDown, m = this.mode;
@@ -18,6 +18,8 @@ export class SceneLoop extends SceneProgression {
     // 키보드 단축키
     if (JD(k.ESC) || JD(k.P)) {
       if (m === 'play') this.pauseGame();
+      else if (m === 'shop') this.leaveShop();
+      else if (m === 'training') this.goMenu();
       else if (m === 'pause') this.resume();
       else if (m === 'settings') this.closeSettings();
       else if (m === 'select') this.goMenu();
@@ -34,6 +36,11 @@ export class SceneLoop extends SceneProgression {
       if (btn.tool) { const t = btn.tool; btn.tool = null; this.levelTool(t); }
       if (btn.pick >= 0) { const i = btn.pick; btn.pick = -1; this.choose(i); }
     } else { btn.pick = -1; btn.tool = null; }
+    if (m === 'shop') {                                    // 갑옷씨의 상점: 1~4 구매, X 나가기
+      ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'].forEach((n, i) => { if (JD(k[n])) btn.buy = i; });
+      if (btn.buy >= 0) { const i = btn.buy; btn.buy = -1; this.buyShop(i); }
+      if (JD(k.X)) this.leaveShop();
+    } else btn.buy = -1;
     if (m === 'select') ['ONE', 'TWO', 'THREE'].forEach((n, i) => { if (JD(k[n])) { this.setChar(CHAR_IDS[i]); renderCharCards(); } });
     if ((JD(k.SPACE) || JD(k.U)) && m === 'play') btn.spin = true;
 
@@ -142,17 +149,27 @@ export class SceneLoop extends SceneProgression {
       if (this.swing) {
         this.swing.t += dt * this.swing.rate;
         const u = this.swing.t / A.dur;
+        if (!this.swing.done) {                      // 맞기 전까지 계속 조준 → 무기 그림 방향 = 실제 공격 방향
+          const dir = this.aimDir();
+          this.swing.dir = dir;
+          if (Math.abs(dir.x) > .15) P.dir = Math.sign(dir.x);
+        }
         if (!this.swing.done && u >= (A.hitAt ?? .4)) {
           this.swing.done = true;
-          const dir = this.aimDir();                 // 맞는 순간 다시 조준 (적이 움직였을 수 있음)
-          if (Math.abs(dir.x) > .15) P.dir = Math.sign(dir.x);
-          this.doAttack(dir, false);
+          this.doAttack(this.swing.dir, false);
         }
         if (u >= 1) this.swing = null;
       }
-      for (let i = this.extra.length - 1; i >= 0; i--) {    // 야하!·2연타 추가 공격
+      for (let i = this.extra.length - 1; i >= 0; i--) {    // 야하!·2연타 추가 공격: 무기도 다시 휘두름(판정 순간 자세에서 시작)
         const x = this.extra[i]; x.t -= dt;
-        if (x.t <= 0) { this.extra.splice(i, 1); this.doAttack(this.aimDir(), true); }
+        if (x.t > 0) continue;
+        this.extra.splice(i, 1);
+        const dir = this.aimDir();
+        if (Math.abs(dir.x) > .15) P.dir = Math.sign(dir.x);
+        this.anim.play(animName, true);
+        this.anim.t = A.dur * (A.hitAt ?? .4) * .85;
+        this.swing = { t:this.anim.t, done:true, dir, rate:Math.max(2, this.swing ? this.swing.rate : 1) };
+        this.doAttack(dir, true);
       }
     }
     if (!P.alive || this.mode !== 'play') return;
@@ -165,16 +182,22 @@ export class SceneLoop extends SceneProgression {
     const rate = (name === 'walk' || name === 'run') ? clamp(speed / (name === 'walk' ? C.walk : C.run), .5, 1.4)
                : this.swing && name === atkAnim ? this.swing.rate : this.rush ? 3 : 1;
     this.anim.update(dt * rate);
+    // 무기 방향: 공격 동작 중에는 공격 방향(위·아래·대각선 포함)으로 무기를 돌림
+    const ad = this.swing && name === atkAnim ? this.swing.dir : this.rush ? this.rush.dir : null;
+    let aw = 0;
+    if (ad) { const u = this.anim.u, sm = v => v * v * (3 - 2 * v); aw = u < .25 ? sm(u / .25) : u > .8 ? sm(Math.max(0, 1 - u) / .2) : 1; }
+    this.rig.setAim(ad ? ad.x * P.dir : 1, ad ? ad.y : 0, aw);
     this.actor.setPosition(P.x, P.y).setScale(S * P.dir, S).setDepth(P.y);
     this.rig.apply(this.anim.pose, name === 'walk' || name === 'run' || (moving && !this.swing), speed, dt);
 
-    // ---- 적 이동 + 접촉 + 화상 ----
-    const E = this.enemies, kd = Math.exp(-8 * dt), sing = !!this.X.sing;
+    // ---- 적 이동(행동 패턴) + 원거리 공격 + 접촉 + 화상 ----
+    const E = this.enemies, kd = Math.exp(-8 * dt), sing = !!this.X.sing, frozen = this.st.freeze > 0;
+    const ram = this.once.wind && speed > 150;               // 바람돌이: 달리는 중 부딪힌 적에게 피해
     for (let i = E.length - 1; i >= 0; i--) {
       const e = E[i];
       if (i >= E.length) continue;
       let dx = P.x - e.x, dy = P.y - e.y;
-      const d = Math.hypot(dx, dy) || 1;
+      const d = Math.hypot(dx, dy) || 1, T = e.type;
       if (d > DESPAWN_R && !e.elite) {
         const a = Math.atan2(P.aimY, P.aimX) + (Math.random() - .5) * 2.2;
         e.x = P.x + Math.cos(a) * RING_R; e.y = P.y + Math.sin(a) * RING_R; e.kbx = e.kby = 0; e.stun = 0;
@@ -186,14 +209,36 @@ export class SceneLoop extends SceneProgression {
         if (e.hp <= 0) { this.kill(e); continue; }
       }
       if (e.hitCd > 0) e.hitCd -= dt;
+      if (e.orbCd > 0) e.orbCd -= dt;
+      if (e.ramCd > 0) e.ramCd -= dt;
       dx /= d; dy /= d;
-      let chase = e.stun > 0 ? 0 : e.spd;                  // 경직 중에는 다가오지 못함
+      let mx = dx, my = dy, chase = e.stun > 0 || frozen ? 0 : e.spd;   // 경직·얼음 중에는 못 움직임
+      if (!frozen && e.stun <= 0) {
+        if (T.ai === 'keep') {                                // 원거리형: 일정 거리 유지하며 옆으로 맴돎
+          if (d < T.keep - 30) chase = -e.spd * .7;
+          else if (d < T.keep + 40) { mx = -dy * e.strafe; my = dx * e.strafe; chase = e.spd * .6; }
+        } else if (T.ai === 'charge') {                        // 돌진형: 멈춰서 깜빡 → 직선 돌진
+          const C0 = T.charge;
+          if (e.chg === '') { e.chgT -= dt; if (e.chgT <= 0 && d < 520) { e.chg = 'wind'; e.chgT = C0.wind; } }
+          else if (e.chg === 'wind') { chase = 0; e.chgT -= dt; if (e.chgT <= 0) { e.chg = 'dash'; e.chgT = C0.time; e.cdx = dx; e.cdy = dy; } }
+          else { mx = e.cdx; my = e.cdy; chase = C0.speed; e.chgT -= dt; if (e.chgT <= 0) { e.chg = ''; e.chgT = C0.cd; } }
+        }
+        if (T.shot) {                                         // 원거리 공격
+          e.shotCd -= dt;
+          if (e.shotCd <= 0 && d < T.shot.range && e.chg !== 'dash') { e.shotCd = T.shot.cd * (.85 + Math.random() * .3); this.fireShots(e); }
+        }
+      }
       if (sing && d < 140) chase *= .85;
       if (e.stun > 0) e.stun -= dt;
-      e.x += (dx * chase + e.kbx) * dt; e.y += (dy * chase + e.kby) * dt;
+      e.x += (mx * chase + e.kbx) * dt; e.y += (my * chase + e.kby) * dt;
       e.kbx *= kd; e.kby *= kd;
       if (e.flash > 0) e.flash -= dt;
       const touch = e.r + PLAYER_R;
+      if (ram && d < touch + 8 && e.ramCd <= 0) {
+        e.ramCd = .4;
+        this.hitEnemy(e, C.dmg * .8, -dx, -dy, 420, STUN_SWING);
+        if (!e.active) continue;
+      }
       if (d < touch) {
         e.x -= dx * (touch - d) * .5; e.y -= dy * (touch - d) * .5;
         this.hurt(e);
@@ -240,23 +285,20 @@ export class SceneLoop extends SceneProgression {
       const d = Math.sqrt(d2) || 1;
       g.sp = Math.min(g.sp + 900 * dt, 650);
       g.x += dx / d * g.sp * dt; g.y += dy / d * g.sp * dt;
-      if (d < 16) { const v = g.val; this.releaseGem(g); SFX.play('gem'); this.gainXp(v); }
+      if (d < 16) {
+        const v = g.val, gx = g.x, gy = g.y; this.releaseGem(g); SFX.play('gem');
+        if (this.R.gemBomb > 0 && this.bombBudget > 0 && Math.random() < this.R.gemBomb) { this.bombBudget--; this.areaHit(gx, gy, 70, C.dmg * 2, 260, 0xff7ab0); }   // 터지는 구슬
+        this.gainXp(v);
+      }
     }
     this.lostT -= dt;
     if (this.lostT <= 0) {                                   // 놓친 경험치 → 근처에 큰 보석 하나
       this.lostT = TUNE.lostGemEvery;
       if (this.lostXp >= 1) { const a = Math.random() * 6.28, r = rnd(120, 220), v = Math.floor(this.lostXp); this.lostXp -= v; this.spawnGem(P.x + Math.cos(a) * r, P.y + Math.sin(a) * r, v); }
     }
-    // ---- 음식·보물상자 (직접 밟아야 먹음) ----
-    for (let i = this.items.length - 1; i >= 0; i--) {
-      const it = this.items[i];
-      it.t += dt;
-      if (Math.hypot(P.x - it.x, P.y - it.y) > 24) continue;
-      it.img.destroy(); this.items.splice(i, 1);
-      if (it.type === 'food') this.eat(it);
-      else { this.pendingChest++; if (this.mode === 'play' && this.pendingLv === 0) this.openChest(); }
-    }
-    if (this.mode === 'play' && this.pendingChest > 0 && this.pendingLv === 0) this.openChest();
+    // ---- 맵 아이템 · 궤도 별 · 적 투사체 · 중립 캐릭터 · 특수 규칙 (field.js) ----
+    this.stepField(dt);
+    if (!P.alive || this.mode !== 'play') return;
 
     this.spawnTick(dt);
   }

@@ -1,7 +1,8 @@
 import { SFX } from '../audio/audio.js';
-import { ELITE_TIMES, RING_R } from '../core/config.js';
+import { RING_R } from '../core/config.js';
 import { SET } from '../core/store.js';
-import { ENEMY_TYPES } from '../data/enemies.js';
+import { ENEMY_TYPES, SCHEDULE, SHOT_RULES } from '../data/enemies.js';
+import { ITEMS } from '../data/items.js';
 import { TUNE } from '../data/tuning.js';
 import { texInfo } from '../engine/textures.js';
 import { SceneStats } from './stats.js';
@@ -13,9 +14,12 @@ export class SceneWorld extends SceneStats {
     const e = this.enemyPool.pop();
     if (!e) return null;
     const T = ENEMY_TYPES[typeName], hpK = 1 + this.t / TUNE.hpA + (this.t / TUNE.hpB) ** 2;
-    Object.assign(e, { active:true, id:++this.enemyId, type:T, elite:!!T.elite, x, y, kbx:0, kby:0, stun:0,
-                       hp:T.elite ? ENEMY_TYPES.slime.hp * hpK * 25 : T.hp * hpK, dmg:T.dmg * (1 + this.t / 1200),
-                       r:T.r, spd:T.spd * (T.elite ? 1 : .9 + Math.random() * .2), mass:T.mass, flash:0, tintState:'', lastAtk:-1,
+    const elite = T.rank === 'mid' || T.rank === 'boss';    // 중간보스·보스: 체력바·이름·보물상자
+    Object.assign(e, { active:true, id:++this.enemyId, type:T, elite, x, y, kbx:0, kby:0, stun:0,
+                       hp:elite ? ENEMY_TYPES.slime.hp * hpK * T.hpMul : T.hp * hpK, dmg:T.dmg * (1 + this.t / 1200),
+                       shotCd:T.shot ? T.shot.cd * (.5 + Math.random() * .7) : 0, spiral:Math.random() * 6.28, orbCd:0, ramCd:0,
+                       chg:'', chgT:T.charge ? T.charge.cd * (.6 + Math.random() * .5) : 0, cdx:0, cdy:0, strafe:Math.random() < .5 ? 1 : -1,
+                       r:T.r, spd:T.spd * (elite ? 1 : .9 + Math.random() * .2), mass:T.mass, flash:0, tintState:'', lastAtk:-1,
                        lastHit:-1, waveId:-1, dmgAcc:0, dmgCrit:false, numT:-1, burnT:0, burnDps:0, hitCd:0, bumped:true, lastDmg:0, sc:T.scale || 1, phase:Math.random() * 6 });
     e.maxHp = e.hp;
     const ti = texInfo(T.tex); e.ts = ti.scale;
@@ -46,9 +50,44 @@ export class SceneWorld extends SceneStats {
     g.active = false; g.idx = -1; g.img.setVisible(false);
     this.gemPool.push(g);
   }
+  /* 맵 아이템 (src/data/items.js). life 초 뒤 사라짐 (0 = 계속) */
   spawnItem(type, x, y) {
-    const ti = texInfo(type), img = this.add.image(x, y, type).setScale(ti.scale).setOrigin(...ti.origin).setDepth(y);
-    this.items.push({ type, x, y, img, t:0 });
+    const def = ITEMS[type] || ITEMS.food, tex = def.tex, ti = texInfo(tex);
+    const img = this.add.image(x, y, tex).setScale(ti.scale).setOrigin(...ti.origin).setDepth(y);
+    this.items.push({ type, def, x, y, img, t:0, life:def.life });
+  }
+  /* 가중치로 아이템 종류 고르기 (kind = 'drop' 처치 드롭 | 'field' 맵에 저절로) — 간식 주머니(회복량)는 주먹밥 가중치 ↑ */
+  pickDrop(kind) {
+    let tot = 0;
+    const w = k => (ITEMS[k][kind] || 0) * (k === 'food' ? 1 + this.M.heal : 1);
+    for (const k in ITEMS) tot += w(k);
+    let r = Math.random() * tot;
+    for (const k in ITEMS) if ((r -= w(k)) <= 0) return k;
+    return 'food';
+  }
+  /* 적 투사체 풀 */
+  spawnShot(x, y, vx, vy, dmg, r) {
+    const s = this.shotPool.pop();
+    if (!s) return null;
+    Object.assign(s, { active:true, x, y, vx, vy, dmg, r, life:SHOT_RULES.life });
+    s.img.setScale(texInfo('e_shot').scale * r / 7.8).setVisible(true);
+    s.idx = this.shots.length; this.shots.push(s);
+    return s;
+  }
+  releaseShot(s) {
+    const last = this.shots.pop();
+    if (last !== s) { this.shots[s.idx] = last; last.idx = s.idx; }
+    s.active = false; s.idx = -1; s.img.setVisible(false);
+    this.shotPool.push(s);
+  }
+  /* 적의 원거리 공격 패턴 */
+  fireShots(e) {
+    const P = this.P, S0 = e.type.shot, dmg = S0.dmg * (1 + this.t / 1200), base = Math.atan2(P.y - e.y, P.x - e.x), y0 = e.y - e.r * .8 * e.sc;
+    const shoot = a => this.spawnShot(e.x, y0, Math.cos(a) * S0.speed, Math.sin(a) * S0.speed, dmg, S0.r);
+    if (S0.pattern === 'fan') { const n = S0.n || 3, sp = (S0.spread || 40) * Math.PI / 180; for (let i = 0; i < n; i++) shoot(base - sp / 2 + sp * (n > 1 ? i / (n - 1) : .5)); }
+    else if (S0.pattern === 'ring') { const n = S0.n || 8; for (let i = 0; i < n; i++) shoot(base + i * Math.PI * 2 / n); }
+    else if (S0.pattern === 'spiral') { const n = S0.n || 4; e.spiral += .45; for (let i = 0; i < n; i++) shoot(e.spiral + i * Math.PI * 2 / n); }
+    else shoot(base);
   }
   puff(x, y, size, tint = 0xffffff) {
     const p = this.puffs[this.puffNext]; this.puffNext = (this.puffNext + 1) % this.puffs.length;
@@ -58,11 +97,13 @@ export class SceneWorld extends SceneStats {
   /* ================= 스폰 ================= */
   pickType() {
     let total = 0;
-    for (const k in ENEMY_TYPES) if (ENEMY_TYPES[k].from <= this.t) total += ENEMY_TYPES[k].w;
+    const ok = T => T.from <= this.t && T.w > 0 && (!T.maxAlive || this.countType(T) < T.maxAlive);
+    for (const k in ENEMY_TYPES) if (ok(ENEMY_TYPES[k])) total += ENEMY_TYPES[k].w;
     let r = Math.random() * total;
-    for (const k in ENEMY_TYPES) { const T = ENEMY_TYPES[k]; if (T.from > this.t) continue; if ((r -= T.w) <= 0) return k; }
+    for (const k in ENEMY_TYPES) { const T = ENEMY_TYPES[k]; if (!ok(T)) continue; if ((r -= T.w) <= 0) return k; }
     return 'slime';
   }
+  countType(T) { let n = 0; for (let i = 0; i < this.enemies.length; i++) if (this.enemies[i].type === T) n++; return n; }
   spawnTick(dt) {
     const st = SET.stress, cap = Math.min(this.MAX_ENEMIES, Math.floor(220 * st + this.t * 1.5));
     this.spawnAcc += (1 + this.t * .045) * st * dt;
@@ -80,11 +121,13 @@ export class SceneWorld extends SceneStats {
         this.spawnEnemy('slime', this.P.x + Math.cos(a) * RING_R * .85, this.P.y + Math.sin(a) * RING_R * .85);
       }
     }
-    if (this.eliteIdx < ELITE_TIMES.length && this.t >= ELITE_TIMES[this.eliteIdx]) {
-      this.eliteIdx++;
+    while (this.schedIdx < SCHEDULE.length && this.t >= SCHEDULE[this.schedIdx].t) {   // 중간보스·보스 (enemies.js SCHEDULE)
+      const ev = SCHEDULE[this.schedIdx++], type = ev.boss ? ev.boss[Math.floor(Math.random() * ev.boss.length)] : ev.type;
       const a = Math.atan2(this.P.aimY, this.P.aimX);
-      this.spawnEnemy('big', this.P.x + Math.cos(a) * RING_R * .9, this.P.y + Math.sin(a) * RING_R * .9);
-      this.toast('커다란 녀석 등장!');
+      const e = this.spawnEnemy(type, this.P.x + Math.cos(a) * RING_R * .9, this.P.y + Math.sin(a) * RING_R * .9);
+      if (!e) continue;
+      if (ev.boss) this.boss = e;
+      this.toast(`${ev.boss ? '보스' : '중간보스'} 등장! ${ENEMY_TYPES[type].name}`);
       SFX.play('elite');
     }
   }

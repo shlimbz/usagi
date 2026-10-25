@@ -41,7 +41,7 @@ export const G = {
   ...(await import('../src/data/training.js'))
 };
 
-const KEYS = 'LEFT,RIGHT,UP,DOWN,A,D,W,S,SPACE,SHIFT,U,R,P,ESC,ENTER,ONE,TWO,THREE,FOUR,FIVE,B,X'.split(',');
+const KEYS = 'LEFT,RIGHT,UP,DOWN,A,D,W,S,SPACE,SHIFT,U,R,P,ESC,ENTER,ONE,TWO,THREE,FOUR,FIVE,B,X,T'.split(',');
 export function newGame() {
   const s = new G.Main();
   s.add = { image: () => mk(), tileSprite: () => mk(), graphics: () => mk(), ellipse: () => mk(), container: () => mk(), text: () => mk() };

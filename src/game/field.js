@@ -17,6 +17,8 @@ export class SceneField extends SceneProgression {
     this.stepItems(dt);
     if (this.mode !== 'play') return;
     this.stepOrbs(dt);
+    this.stepWaves(dt);
+    for (let i = this.booms.length - 1; i >= 0; i--) { this.booms[i].age += dt; if (this.booms[i].age > .4) this.booms.splice(i, 1); }
     this.stepShots(dt);
     this.stepNeutral(dt);
     for (let i = this.bolts.length - 1; i >= 0; i--) { this.bolts[i].t -= dt; if (this.bolts[i].t <= 0) this.bolts.splice(i, 1); }

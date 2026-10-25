@@ -17,7 +17,7 @@ export class SceneProgression extends SceneSurvival {
     P.xp += v * this.D.xp;
     while (P.xp >= P.need) {
       P.xp -= P.need; P.lvl++; P.need = XP_NEED(P.lvl); this.pendingLv++;
-      if (this.X.did) this.heal(P.maxHp * .1);
+      if (this.X.did && this.st.didCd <= 0) { this.heal(P.maxHp * .1); this.st.didCd = 3; }   // 해냈다!: 레벨업 회복 (3초에 한 번 — 레벨업이 몰려도 한꺼번에 회복 안 됨)
     }
     if (this.pendingLv > 0 && this.mode === 'play') this.openLevelUp();
   }
@@ -88,9 +88,13 @@ export class SceneProgression extends SceneSurvival {
     }
     const c = o.def, lv = (this.lvC[c.id] || 0) + 1, sign = c.minus ? '-' : '+';
     let main, sub;
-    if (c.custom) {
+    if (c.id === 'wave') {
+      const W = TUNE.wave; main = `공격 방향으로 검기 발사\n피해 ${pct(W.dmg[lv - 1])} · 관통`; sub = lv > 1 ? `피해 ${pct(W.dmg[lv - 2])} → ${pct(W.dmg[lv - 1])} · 크기 ↑` : '사거리의 2.5배까지 날아감';
+    } else if (c.id === 'multi') {
+      main = `기본 공격 +1회\n(한 번에 ${lv + 1}번 휘두름)`; sub = '추가 공격도 같은 피해';
+    } else if (c.custom) {
       if (lance) { const st = TUNE.widthStep, w0 = PRESETS[id].base.width + this.Wp.width + st * (lv - 1); main = `창 폭 +${st} · 길이 +${pct(TUNE.lanceLenStep)}`; sub = `폭 ${w0} → ${w0 + st}`; }
-      else { const st = TUNE.arcStep.fan; main = `휘두르는 각도 +${st}°`; sub = lv === c.max ? '한 바퀴(360°) 완성!' : '360°까지 넓어짐'; }
+      else { const st = TUNE.arcStep.fan, a0 = Math.min(360, PRESETS[id].base.arc + this.Wp.arc + this.M.arcDeg + st * (lv - 1)); main = `휘두르는 각도 +${st}°`; sub = a0 + st >= 360 ? `${a0}° → 한 바퀴(360°) 완성!` : `${a0}° → ${a0 + st}°`; }
     } else if (c.count) {
       main = `${c.label} +${c.per}개`;
       sub = lv > 1 ? `${c.per * (lv - 1)}개 → ${c.per * lv}개` : '';
@@ -115,9 +119,10 @@ export class SceneProgression extends SceneSurvival {
     } else if (o.kind === 'once') {
       this.once[o.key] = true;
       if (o.key === 'miracle') this.miracle++;
-      if (o.key === 'toolset') { M.dmg += .15; M.spDmg += .3; }
-      if (o.key === 'medal') { M.dmg += .2; M.aspd += .15; }
-      if (o.key === 'lunch') this.st.lunch = 30;
+      if (o.key === 'toolset') { M.dmg += .25; M.spDmg += .6; }
+      if (o.key === 'medal') { M.dmg += .35; M.aspd += .25; }
+      if (o.key === 'lunch') { this.st.lunch = 20; M.maxhp += .2; }
+      if (o.key === 'cheer') this.rerolls += 2;
     } else if (o.kind === 'excl') {
       if ((this.X[o.key] || 0) >= o.def.max) return;
       this.X[o.key] = (this.X[o.key] || 0) + 1;
@@ -127,7 +132,8 @@ export class SceneProgression extends SceneSurvival {
       const c = o.def;
       if ((this.lvC[c.id] || 0) >= c.max) return;
       this.lvC[c.id] = (this.lvC[c.id] || 0) + 1;
-      if (c.custom) M.arcLv += 1;                          // 넓게 휘두르기: 창 폭 +50·길이 +10%, 봉 +90°
+      if (c.id === 'wave' || c.id === 'multi') M[c.key] = (M[c.key] || 0) + 1;   // 검기 Lv · 추가 공격 횟수
+      else if (c.custom) M.arcLv += 1;                     // 넓게 휘두르기: 창 폭 +50·길이 +10%, 봉 +100°
       else if (c.key !== 'dr') M[c.key] += c.per;          // 받는 피해 감소(dr)는 derive()에서 Lv로 계산
       if (c.also) for (const k in c.also) M[k] += c.also[k];   // 함께 오르는 값 (기운 받기: 흡혈량)
     }
@@ -335,7 +341,7 @@ export class SceneProgression extends SceneSurvival {
     let total = 0;
     for (const id of lost) {
       const c = COMMON.find(x => x.id === id), lv = this.lvC[id];
-      if (c.custom) this.M.arcLv -= lv; else if (c.key !== 'dr') this.M[c.key] -= c.per * lv;
+      if (c.id === 'wave' || c.id === 'multi') this.M[c.key] -= lv; else if (c.custom) this.M.arcLv -= lv; else if (c.key !== 'dr') this.M[c.key] -= c.per * lv;
       if (c.also) for (const k in c.also) this.M[k] -= c.also[k] * lv;
       delete this.lvC[id]; total += lv;
     }

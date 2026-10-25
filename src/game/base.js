@@ -55,6 +55,8 @@ export class SceneBase extends Phaser.Scene {
     for (let i = 0; i < ORBIT.max; i++) this.orbImgs.push(this.add.image(0, 0, 'orb_star').setVisible(false));
     this.neutralText = this.add.text(0, 0, '', { fontFamily:'system-ui,sans-serif', fontSize:'11px', fontStyle:'bold', color:'#fff', stroke:'#2a2230', strokeThickness:3, align:'center' }).setOrigin(.5, 1).setDepth(6e6).setVisible(false);
     this.bolts = [];                                   // 번개 연쇄 이펙트
+    this.booms = [];                                   // 폭발 이펙트
+    this.pwaves = [];                                  // 검기 (플레이어 투사체)
     this.texts = [];
     for (let i = 0; i < 16; i++) this.texts.push({ obj:this.add.text(0, 0, '', { fontFamily:'system-ui,sans-serif', fontSize:'15px', fontStyle:'bold', color:'#fff', stroke:'#2a2230', strokeThickness:4 }).setOrigin(.5).setDepth(6e6).setVisible(false), t:-1 });
     this.textNext = 0;
@@ -71,9 +73,10 @@ export class SceneBase extends Phaser.Scene {
     this.grid = new Grid(CELL);
     this.anim = new AnimPlayer();
     this.slashes = []; this.rings = []; this.waves = []; this.trails = [];
-    this.keys = this.input.keyboard.addKeys('LEFT,RIGHT,UP,DOWN,A,D,W,S,SPACE,SHIFT,U,R,P,ESC,ENTER,ONE,TWO,THREE,FOUR,FIVE,B,X');
+    this.keys = this.input.keyboard.addKeys('LEFT,RIGHT,UP,DOWN,A,D,W,S,SPACE,SHIFT,U,R,P,ESC,ENTER,ONE,TWO,THREE,FOUR,FIVE,B,X,T');
     this.hudT = 0; this.fpsT = 0;
     this.mode = 'menu';
+    this.syncSpeedBtn && this.syncSpeedBtn();
     this.reset();
     this.setMode('menu');
   }
@@ -132,7 +135,7 @@ export class SceneBase extends Phaser.Scene {
     if (this.neutral) { this.neutral.img.destroy(); this.neutral = null; }
     this.neutralText.setVisible(false);
     for (const im of this.orbImgs) im.setVisible(false);
-    this.bolts.length = 0;
+    this.bolts.length = 0; this.booms.length = 0; this.pwaves.length = 0;
     for (const t of this.texts) { t.t = -1; t.obj.setVisible(false); }
     for (const n of this.nums) { n.t = -1; n.obj.setVisible(false); }
     for (const t of this.eliteTexts) t.setVisible(false);
@@ -144,7 +147,7 @@ export class SceneBase extends Phaser.Scene {
                gauge:0, lvl:1, xp:0, need:XP_NEED(1), kills:0, coins:0, alive:true };
     // 수정치: 공용 선택지·유물·1회성이 더하는 값 (대부분 %를 소수로)
     this.M = { dmg:0, aspd:0, range:0, arcLv:0, arcDeg:0, spd:0, maxhp:0, magnet:0, xp:0, kb:0, crit:0, critDmg:0,
-               boss:0, lsChance:0, lsAmt:0, heal:0, coin:0, luck:0, lowHp:0, gauge:0, streak:0, spDmg:0, orbs:0, orbDmg:0, drList:[] };
+               boss:0, lsChance:0, lsAmt:0, heal:0, coin:0, luck:0, lowHp:0, gauge:0, streak:0, spDmg:0, orbs:0, orbDmg:0, waveLv:0, multi:0, drList:[] };
     // 특수 규칙: 거래(검은별)·상점·특이 유물이 바꾸는 값. 기본값이면 아무 효과 없음
     this.R = { hpDrain:0,      // 매초 최대 체력의 이 비율만큼 체력 감소 (1 아래로는 안 내려감)
                dmgTaken:0,     // 받는 피해 추가 (+0.2 = 20% 더 받음)
@@ -175,13 +178,13 @@ export class SceneBase extends Phaser.Scene {
       if (tr.key === 'reroll') this.rerolls += tr.per * lv; else this.M[tr.key] += tr.per * lv;
     }
     this.pals = 0; this.orbAng = 0; this.orbPos = []; this.neutral = null; this.neutralT = 0; this.fieldT = 0;
-    this.tradesTaken = new Set(); this.shopBought = {}; this.shopOffer = []; this.banked = false; this.boss = null; this.schedIdx = 0;
+    this.tradesTaken = new Set(); this.shopBought = {}; this.shopOffer = []; this.banked = false; this.boss = null; this.schedIdx = 0; this.tier = 0;
     this.chainBudget = 0; this.bombBudget = 0;
     this.log = { boss:0, mid:0, neutrals:0, shop:0, trades:0 };   // 판 기록 (결과·시뮬레이션용)
     this.pity = 0; this.legends = 0; this.memo = null; this.miracle = 0; this.oldCharmUsed = false;
     this.st = { cry:0, fever:0, feverCd:0, courMax:0, hankyCd:0, candoCd:0, togetherCd:0, ramen:0, band:0, mfood:0, mfoodKind:'',
                 streakT:0, pururuCd:0, regen:0, lunch:0, friends:30, friendsOn:0, friendHit:0, lsBudget:0, postInv:0,
-                shield:0, shieldT:0, chaosT:20, chaosOn:0, chaosInv:0, chaosKind:'', freeze:0, starInv:0, rRegen:0, overflowAcc:0 };
+                didCd:0, shield:0, shieldT:0, chaosT:20, chaosOn:0, chaosInv:0, chaosKind:'', freeze:0, starInv:0, rRegen:0, overflowAcc:0 };
     this.killTimes = []; this.spGained = 0; this.lostXp = 0; this.lostT = TUNE.lostGemEvery;
     this.t = 0; this.acc = 0; this.hitstop = 0; this.pendingLv = 0; this.pendingChest = 0;
     this.spawnAcc = 0; this.nextBurst = 45; this.enemyId = 0; this.atkId = 0;

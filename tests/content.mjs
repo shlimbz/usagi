@@ -31,9 +31,9 @@ for (const cid of G.CHAR_IDS) {
   const g = newGame(), { s } = g; startRun(g, cid); g.frame();
   const stay = () => { const n = s.neutral; s.P.x = n.x; s.P.y = n.y; for (let i = 0; i < 60 * 15.5 && s.neutral; i++) { s.P.x = n.x; s.P.y = n.y; s.P.hp = s.P.maxHp; if (s.mode === 'levelup' && s.lvKind !== 'trade') G.btn.pick = 0; g.frame(); } };
   for (let k = 0; k < 4; k++) { s.spawnNeutral('ystar'); stay(); }
-  expect(`[${cid}] 노란별 동료 최대 3`, s.pals === 3 && s.orbCount() === 3, s.pals);
+  expect(`[${cid}] 노란별 동료 최대 3`, s.pals === 3 && s.orbCount() >= 3, s.pals);
   for (let i = 0; i < 120; i++) g.frame();
-  expect(`[${cid}] 궤도 별 3개 회전`, s.orbPos.length === 3);
+  expect(`[${cid}] 궤도 별 회전 (동료 3 + 선택지)`, s.orbPos.length === s.orbCount() && s.orbPos.length >= 3);
   s.P.coins = 2000; s.spawnNeutral('armor'); stay();
   expect(`[${cid}] 갑옷씨 → 상점`, s.mode === 'shop' && s.shopOffer.length === 4);
   const c0 = s.P.coins; G.btn.buy = 0; g.frame(); G.btn.buy = 1; g.frame();
@@ -93,7 +93,8 @@ for (const cid of G.CHAR_IDS) {
   // 투사체가 플레이어를 맞힘
   s.P.inv = 0; s.st.postInv = 0; s.st.starInv = 0; s.st.freeze = 0; const hp0 = s.P.hp = s.P.maxHp;
   for (const e of [...s.enemies]) s.releaseEnemy(e);
-  s.spawnShot(s.P.x + 40, s.P.y, -400, 0, 10, 6); for (let i = 0; i < 12; i++) g.frame();
+  s.swing = null; s.extra.length = 0; s.pwaves.length = 0;
+  s.spawnShot(s.P.x + 40, s.P.y, -400, 0, 10, 6); for (let i = 0; i < 12; i++) { s.atkTimer = 99; g.frame(); }   // 자동 공격이 탄을 쳐내지 않게
   expect('투사체 피격', s.P.hp < hp0, `${hp0}→${s.P.hp}`);
 }
 
@@ -125,6 +126,34 @@ for (const cid of G.CHAR_IDS) {
   expect('판 종료 → 지갑에 보수 저장', G.store.data.wallet === 123, G.store.data.wallet);
   s.act('toMenu'); expect('메뉴로 가도 두 번 저장 안 함', G.store.data.wallet === 123);
   G.store.data.train = {}; G.store.data.wallet = 0;
+}
+
+// ---------- v0.7: 배속 · 360° · 검기 · 연속 공격 · 피버 선택지 · 폭발 · 적 강화 단계 ----------
+{
+  const g = newGame(), { s } = g; startRun(g, 'usagi'); g.frame();
+  const t0 = s.t; G.SET.speed = 3; for (let i = 0; i < 60; i++) g.frame(); const d3 = s.t - t0; G.SET.speed = 1;
+  expect('배속 3x: 같은 프레임에 3배 진행', Math.abs(d3 - 3) < .2, d3.toFixed(2));
+  g.press('T'); g.frame(); expect('T 키로 배속 변경', G.SET.speed === 2); G.SET.speed = 1;
+  const wide = G.COMMON.find(c => c.id === 'wide'); for (let i = 0; i < 3; i++) s.applyChoice({ kind:'common', key:'wide', def:wide, g:wide.g });
+  expect('넓게 휘두르기 3Lv = 360°', s.D.arc === 360, s.D.arc);
+  s.P.gauge = 100; g.press('SPACE'); for (let i = 0; i < 90; i++) { if (s.mode === 'levelup') G.btn.pick = 0; g.frame(); }
+  expect('필살기 후에도 360°', s.D.arc === 360, s.D.arc);
+  const wave = G.COMMON.find(c => c.id === 'wave'), multi = G.COMMON.find(c => c.id === 'multi');
+  s.applyChoice({ kind:'common', key:'wave', def:wave, g:wave.g }); s.applyChoice({ kind:'common', key:'multi', def:multi, g:multi.g }); s.applyChoice({ kind:'common', key:'multi', def:multi, g:multi.g });
+  let maxW = 0, attacks = 0; const od = s.doAttack.bind(s); s.doAttack = (d, x) => { attacks++; return od(d, x); };
+  for (let i = 0; i < 4; i++) { const a = i * 1.57; s.spawnEnemy('golem', s.P.x + Math.cos(a) * 80, s.P.y + Math.sin(a) * 80); }
+  for (let i = 0; i < 60 * 4; i++) { if (s.mode === 'levelup') G.btn.pick = 0; g.frame(); maxW = Math.max(maxW, s.pwaves.length); s.P.hp = s.P.maxHp; }
+  expect('검기 발사', maxW > 0, maxW);
+  expect('연속 공격 +2: 공격 횟수 약 3배', attacks >= 9, attacks);
+  const fu = G.EXCL.usagi.find(c => c.id === 'feverUp'); const c0 = s.feverChance();
+  for (let i = 0; i < 3; i++) s.applyChoice({ kind:'excl', key:'feverUp', def:fu, g:fu.g });
+  s.st.fever = 0; s.startFever();
+  expect('우라 야하 야하!: 확률 +3%p · 지속 +3초', Math.abs(s.feverChance() - c0 - .03) < 1e-9 && s.st.fever >= 9 - 1e-9, `${s.feverChance()} ${s.st.fever}`);
+  const ura = G.EXCL.usagi.find(c => c.id === 'ura'); for (let i = 0; i < 3; i++) s.applyChoice({ kind:'excl', key:'ura', def:ura, g:ura.g });
+  let booms = 0; for (let i = 0; i < 60 * 8; i++) { if (s.mode === 'levelup') G.btn.pick = 0; if (i % 20 === 0) s.spawnEnemy('slime', s.P.x + 60, s.P.y); g.frame(); booms = Math.max(booms, s.booms.length); s.P.hp = s.P.maxHp; }
+  expect('우라!! 폭발 이펙트', booms > 0);
+  s.t = 250; g.frame(); const e = s.spawnEnemy('slime', s.P.x + 300, s.P.y);
+  expect('4분 뒤 적 강화 3단계 (색·크기)', s.tier === 2 && e.tint === G.ENEMY_TIERS[2].tint && e.sc > 1.1, `${s.tier} ${e.sc}`);
 }
 
 console.log(ok.map(x => '✓ ' + x).join('\n'));

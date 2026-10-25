@@ -38,7 +38,7 @@ export class SceneSurvival extends SceneSpecials {
     if (this.has('hanky') && st.hankyCd <= 0) { st.courMax = 3; st.hankyCd = 10; }
     if (P.hp <= 0) {
       if (X.cando && st.candoCd <= 0) { P.hp = 1; P.inv = 2; st.candoCd = 90; this.pop(P.x, P.y - 70, '할 수 있어…!', '#ff9ac2'); }
-      else if (this.miracle > 0) { this.miracle--; P.hp = 1; P.inv = 2; this.pop(P.x, P.y - 70, '작은 기적!', '#c38bff'); }
+      else if (this.miracle > 0) { this.miracle--; P.hp = P.maxHp * .5; P.inv = 3; this.pop(P.x, P.y - 70, '작은 기적!', '#c38bff'); }
       else if (this.has('oldcharm') && !this.oldCharmUsed) { this.oldCharmUsed = true; P.hp = P.maxHp * .5; P.inv = 2; this.pop(P.x, P.y - 70, '낡은 부적!', '#ffd54a'); }
     }
     if (P.hp > 0 && X.together && P.hp < P.maxHp * .3 && st.togetherCd <= 0) {

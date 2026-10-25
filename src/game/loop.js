@@ -7,7 +7,8 @@ import { ANIMS } from '../engine/anim.js';
 import { fanHitsCircle } from '../engine/collision.js';
 import { SceneField } from './field.js';
 import { renderCharCards } from '../ui/menu.js';
-import { btn, joy } from '../ui/state.js';
+import { $, btn, joy } from '../ui/state.js';
+import { SET, store } from '../core/store.js';
 
 /* 씬 9/10: 메인 루프 · 입력 · 타이머 · 이동 · 적 AI · 줍기 */
 export class SceneLoop extends SceneField {
@@ -43,17 +44,19 @@ export class SceneLoop extends SceneField {
     } else btn.buy = -1;
     if (m === 'select') ['ONE', 'TWO', 'THREE'].forEach((n, i) => { if (JD(k[n])) { this.setChar(CHAR_IDS[i]); renderCharCards(); } });
     if ((JD(k.SPACE) || JD(k.U)) && m === 'play') btn.spin = true;
+    if (JD(k.T) && (m === 'play' || m === 'pause')) this.cycleSpeed();
 
     if (this.mode === 'play') {
-      if (this.hitstop > 0) this.hitstop -= dts;
+      if (this.hitstop > 0) this.hitstop -= dts * (SET.speed || 1);
       else {
-        this.acc += dts;
+        const sp = SET.speed || 1, maxN = MAX_STEPS * sp;   // 배속: 같은 화면 시간에 스텝을 sp배 진행
+        this.acc += dts * sp;
         let n = 0;
-        while (this.acc >= FIXED && n < MAX_STEPS) {
+        while (this.acc >= FIXED && n < maxN) {
           this.acc -= FIXED; n++; this.step(FIXED);
           if (this.hitstop > 0 || this.mode !== 'play') { this.acc = 0; break; }
         }
-        if (n === MAX_STEPS) this.acc = 0;
+        if (n >= maxN) this.acc = 0;
       }
     } else if (this.mode === 'menu' || this.mode === 'select') {
       this.anim.update(dts);                              // 메뉴 배경: 캐릭터 대기 모션만
@@ -63,6 +66,12 @@ export class SceneLoop extends SceneField {
     this.render(dts);
   }
 
+  /* 배속 1x → 2x → 3x → 1x (설정에 저장) */
+  cycleSpeed() {
+    SET.speed = (SET.speed || 1) >= 3 ? 1 : (SET.speed || 1) + 1;
+    store.save(); this.syncSpeedBtn();
+  }
+  syncSpeedBtn() { const b = $('speedBtn'); if (b) { b.textContent = `${SET.speed || 1}x`; b.classList.toggle('on', (SET.speed || 1) > 1); } }
   readMove() {
     const k = this.keys;
     let x = (k.RIGHT.isDown || k.D.isDown ? 1 : 0) - (k.LEFT.isDown || k.A.isDown ? 1 : 0);
@@ -75,16 +84,16 @@ export class SceneLoop extends SceneField {
 
   tickTimers(dt) {
     const st = this.st, P = this.P;
-    for (const k of ['cry', 'feverCd', 'courMax', 'hankyCd', 'candoCd', 'togetherCd', 'ramen', 'band', 'mfood', 'streakT', 'pururuCd', 'postInv'])
+    for (const k of ['cry', 'feverCd', 'courMax', 'hankyCd', 'candoCd', 'togetherCd', 'ramen', 'band', 'mfood', 'streakT', 'pururuCd', 'postInv', 'didCd'])
       if (st[k] > 0) st[k] -= dt;
     if (st.fever > 0) { st.fever -= dt; if (st.fever <= 0) this.endFever(); }
     if (P.inv > 0) P.inv -= dt;
     const cap = P.maxHp * LS_CAP;                             // 흡혈 예산: 초당 최대 HP 8%
     st.lsBudget = Math.min(cap, st.lsBudget + cap * dt);
-    if (this.X.posi) { st.regen += dt; if (st.regen >= 5) { st.regen -= 5; this.heal(P.maxHp * .01 * this.X.posi * this.xm()); } }
+    if (this.X.posi) { st.regen += dt; if (st.regen >= 5) { st.regen -= 5; this.heal(P.maxHp * [0, .006, .012, .018][this.X.posi] * this.xm()); } }
     if (this.once.lunch) {
       st.lunch -= dt;
-      if (st.lunch <= 0) { st.lunch = 30; const a = Math.random() * 6.28, r = rnd(80, 140); this.spawnItem('food', P.x + Math.cos(a) * r, P.y + Math.sin(a) * r); }
+      if (st.lunch <= 0) { st.lunch = 20; const a = Math.random() * 6.28, r = rnd(80, 140); this.spawnItem('food', P.x + Math.cos(a) * r, P.y + Math.sin(a) * r); }
     }
     if (this.has('friends')) {                               // 친구들의 응원: 30초마다 4초간 두 친구가 함께 공격
       st.friends -= dt;
@@ -287,7 +296,7 @@ export class SceneLoop extends SceneField {
       g.x += dx / d * g.sp * dt; g.y += dy / d * g.sp * dt;
       if (d < 16) {
         const v = g.val, gx = g.x, gy = g.y; this.releaseGem(g); SFX.play('gem');
-        if (this.R.gemBomb > 0 && this.bombBudget > 0 && Math.random() < this.R.gemBomb) { this.bombBudget--; this.areaHit(gx, gy, 70, C.dmg * 2, 260, 0xff7ab0); }   // 터지는 구슬
+        if (this.R.gemBomb > 0 && this.bombBudget > 0 && Math.random() < this.R.gemBomb) { this.bombBudget--; this.areaHit(gx, gy, 70, C.dmg * 2, 260, 0xff7ab0); this.boom(gx, gy, 70); }   // 터지는 구슬
         this.gainXp(v);
       }
     }

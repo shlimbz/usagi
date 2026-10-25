@@ -6,8 +6,8 @@
  *   idle  : 제자리에 서 있음 (방치 플레이 — 초반에는 죽어야 정상)
  *   chaos : 무작위 이동·무작위 선택·Reroll/Banish/Skip/보관 남발 (오류 찾기용, sim 에서 HP 50% 아래로 안 내려감)
  * ===================================================================== */
-const GOOD = ['power', 'quick', 'wide', 'far', 'tact', 'burst', 'meal', 'armor', 'drain', 'orbit', 'endure', 'light', 'pick'];
-const BRAVE_GOOD = ['drain', 'endure', 'quick', 'power', 'tact', 'burst', 'wide', 'far', 'armor', 'orbit'];
+const GOOD = ['multi', 'power', 'quick', 'wide', 'wave', 'far', 'tact', 'burst', 'meal', 'armor', 'drain', 'orbit', 'endure', 'light', 'pick'];
+const BRAVE_GOOD = ['multi', 'drain', 'endure', 'quick', 'power', 'tact', 'burst', 'wide', 'far', 'armor', 'orbit'];
 
 function setMove(K, vx, vy, run) {
   const l = Math.hypot(vx, vy) || 1; vx /= l; vy /= l;

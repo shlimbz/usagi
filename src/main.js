@@ -16,7 +16,7 @@ import { Main } from './game/render.js';
 import { initUI } from './ui/menu.js';
 
 app.game = new Phaser.Game({
-  type: Phaser.AUTO, parent: 'game', width: W * WORLD, height: H * WORLD, backgroundColor: '#1d2230',
+  type: Phaser.AUTO, parent: 'game', width: W * WORLD, height: H * WORLD, backgroundColor: '#fff2f6',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   render: { antialias: true, antialiasGL: false, powerPreference: 'high-performance', batchSize: 4096 },
   fps: { target: 60, smoothStep: false }, banner: false, scene: Main

@@ -4,6 +4,7 @@ import { PRESETS } from '../data/characters.js';
 import { TUNE } from '../data/tuning.js';
 import { ITEM_RULES } from '../data/items.js';
 import { NEUTRALS, NEUTRAL_RULES } from '../data/neutrals.js';
+import { ENEMY_TIERS } from '../data/enemies.js';
 import { SLASH_LIFE } from '../engine/anim.js';
 import { lanceCorners } from '../engine/collision.js';
 import { SceneLoop } from './loop.js';
@@ -34,14 +35,14 @@ export class Main extends SceneLoop {
       img.x = e.x; img.y = e.y; img.depth = e.y;
       img.setScale((1 + b) * e.sc * e.ts * (P.x < e.x ? -1 : 1), (1 - b) * e.sc * e.ts);
       const frozen = this.st.freeze > 0, wind = e.chg === 'wind' && Math.floor(now * 14) % 2 === 0;
-      const want = e.flash > 0 ? 'f' : wind ? 'w' : frozen ? 'i' : e.burnT > 0 ? 'b' : e.type.tint ? 'e' : '';
+      const want = e.flash > 0 ? 'f' : wind ? 'w' : frozen ? 'i' : e.burnT > 0 ? 'b' : e.tint ? 'e' : '';
       if (want !== e.tintState) {
         e.tintState = want;
         if (want === 'f') img.setTintFill(0xffffff);
         else if (want === 'w') img.setTintFill(0xff5a5a);       // 돌진 직전 깜빡임 (피할 신호)
         else if (want === 'i') img.setTint(0x9fdcff);
         else if (want === 'b') img.setTint(0xff9a3b);
-        else if (want === 'e') img.setTint(e.type.tint);
+        else if (want === 'e') img.setTint(e.tint);      // 중간보스·보스 고유 색 또는 시간대 강화 단계 색
         else img.clearTint();
       }
       const top = e.y - (e.type.barY || e.r * 2.2) * e.sc;  // 머리 위
@@ -108,6 +109,17 @@ export class Main extends SceneLoop {
         ov.fillStyle(N.color, .95).fillTriangle(ar.x + c * 12, ar.y + s2 * 12, ar.x - c * 6 - s2 * 8, ar.y - s2 * 6 + c * 8, ar.x - c * 6 + s2 * 8, ar.y - s2 * 6 - c * 8);
       }
     } else this.neutralText.setVisible(false);
+    for (const b of this.booms) {                        // 폭발: 주황 불꽃이 퍼지고 흰 링
+      const k = b.age / .4, r = b.r * (.5 + .7 * Math.min(1, k * 2.2));
+      ov.fillStyle(0xff7a2a, .55 * (1 - k)).fillCircle(b.x, b.y, r);
+      ov.fillStyle(0xffe08a, .7 * (1 - k)).fillCircle(b.x, b.y, r * .55);
+      ov.lineStyle(4, 0xffffff, .9 * (1 - k)).strokeCircle(b.x, b.y, r * 1.05);
+    }
+    for (const w of this.pwaves) {                       // 검기: 진행 방향으로 볼록한 초승달
+      const a = Math.atan2(w.dy, w.dx), al = Math.min(1, w.age * 8) * Math.min(1, w.left / 60);
+      ov.lineStyle(7, 0xbfe9ff, .35 * al); ov.beginPath(); ov.arc(w.x - w.dx * w.r * .6, w.y - w.dy * w.r * .6, w.r, a - 1.1, a + 1.1, false); ov.strokePath();
+      ov.lineStyle(3, 0xffffff, .95 * al); ov.beginPath(); ov.arc(w.x - w.dx * w.r * .6, w.y - w.dy * w.r * .6, w.r, a - 1, a + 1, false); ov.strokePath();
+    }
     for (const b of this.bolts) { ov.lineStyle(2.5, 0xbfe9ff, Math.min(1, b.t / .1)); ov.lineBetween(b.x0, b.y0, b.x1, b.y1); }
     const fxDt = this.mode === 'play' ? dt : 0;          // 일시정지 중에는 이펙트도 멈춤
     for (const p of this.puffs) {
@@ -248,6 +260,10 @@ export class Main extends SceneLoop {
       + row('🛡️', '받는 피해', D.dr < 1 ? `-${Math.round((1 - D.dr) * 100)}%` : '0%');
     if (M.lsChance > 0) h += row('🩸', '흡혈', `${Math.round(M.lsChance * 100)}% · ${Math.round((LS_BASE + M.lsAmt) * 100)}%`);
     if (M.luck > 0) h += row('🍀', '행운', `+${Math.round(M.luck * 100)}%`);
+    if (this.rig.id === 'usagi') h += row('🌟', '폭주 확률', `${(this.feverChance() * 100).toFixed(1)}%`);
+    if (M.multi) h += row('⚔️', '공격 횟수', `${1 + M.multi}회`);
+    if (M.waveLv) h += row('🌙', '검기', `Lv${M.waveLv}`);
+    h += row('☠️', '적 강화', ENEMY_TIERS[this.tier || 0].name, (this.tier || 0) >= 3 ? 'hot' : '');
     const R = this.R, orbs = this.orbCount();
     if (orbs) h += row('⭐', '궤도 별', `${orbs}개`);
     if (R.thorns > 0) h += row('🌵', '가시 반사', `${Math.round(R.thorns * 100)}%`);

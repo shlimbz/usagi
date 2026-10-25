@@ -31,16 +31,16 @@ export class SceneCombat extends SceneWorld {
       const h = Math.min(this.st.lsBudget, amt * (LS_BASE + M.lsAmt));
       this.st.lsBudget -= h; this.heal(h / this.D.heal, true);
     }
-    if (crit && this.once.chain && !opt.chain && this.chainBudget > 0) {   // 번개 부적: 치명타 → 주변 2마리 연쇄
+    if (crit && this.once.chain && !opt.chain && this.chainBudget > 0) {   // 번개 부적: 치명타 → 주변 3마리 연쇄
       this.chainBudget--;
-      let a = null, b = null, da = 1e9, db = 1e9;
+      let a = null, b = null, c3 = null, da = 1e9, db = 1e9;
       this.forEnemiesNear(e.x, e.y, 120, o => {
         if (o === e) return;
         const d = (o.x - e.x) ** 2 + (o.y - e.y) ** 2;
         if (d > 120 * 120) return;
-        if (d < da) { b = a; db = da; a = o; da = d; } else if (d < db) { b = o; db = d; }
+        if (d < da) { c3 = b; b = a; db = da; a = o; da = d; } else if (d < db) { c3 = b; b = o; db = d; } else if (!c3) c3 = o;
       });
-      for (const o of [a, b]) if (o) { this.bolts.push({ x0:e.x, y0:e.y - e.r, x1:o.x, y1:o.y - o.r, t:.15 }); this.hitEnemy(o, amt * .6, 0, 0, 0, 0, { raw:true, noCrit:true, chain:true }); }
+      for (const o of [a, b, c3]) if (o) { this.bolts.push({ x0:e.x, y0:e.y - e.r, x1:o.x, y1:o.y - o.r, t:.15 }); this.hitEnemy(o, amt * .8, 0, 0, 0, 0, { raw:true, noCrit:true, chain:true }); }
     }
     if (e.hp <= 0) this.kill(e);
     return amt;
@@ -113,7 +113,7 @@ export class SceneCombat extends SceneWorld {
     const P = this.P, D = this.D, X = this.X, Wp = this.Wp, id = this.rig.id, C = PRESETS[id].base, st = this.st, xm = this.xm();
     const aid = ++this.atkId;
     let mul = 1, kbMul = 1;
-    if (X.unpred) { mul = rnd(.6, 1.7); if (mul >= 1.65) kbMul = 2; }
+    if (X.unpred) { mul = rnd(.8, 2); if (mul >= 1.9) kbMul = 2; }
     mul *= this.R.basicMul;                                   // 별의 계약 등: 기본 공격 피해 배율
     const dirs = [dir];
     if (id === 'chiikawa' && Wp.evo) dirs.push(rot(dir, rad(25)), rot(dir, rad(-25)));
@@ -151,21 +151,24 @@ export class SceneCombat extends SceneWorld {
     // 우사기: 우라!! 폭발 / 야하! 추가 휘두르기 / 우라 야하! 발동
     if (id === 'usagi') {
       if (X.ura) {
-        const lv = X.ura, ch = [0, .08, .11, .15][lv] * xm * (st.fever > 0 ? 2 : 1);
+        const lv = X.ura, ch = [0, .12, .16, .2][lv] * xm * (st.fever > 0 ? 2 : 1);
         if (Math.random() < ch) {
           const tx = P.x + dir.x * D.range, ty = P.y + dir.y * D.range, r = [0, 50, 60, 70][lv];
           const burn = C.dmg * D.dmg * [0, .2, .25, .3][lv] * xm;
           this.areaHit(tx, ty, r, C.dmg * [0, 1.5, 1.75, 2][lv] * xm * mul, 300, 0xff8a3b, e => { e.burnDps = e.burnT > 0 ? Math.max(e.burnDps, burn) : burn; e.burnT = 3; });
+          this.boom(tx, ty, r);
           SFX.play('boom');
         }
       }
       if (!extra) {
         if (X.yaha && Math.random() < [0, .12, .16, .2][X.yaha] * xm) this.extra.push({ t:.12, dir });
-        if (st.fever <= 0 && st.feverCd <= 0 && Math.random() < (X.pururu ? .045 : .03)) this.startFever();
+        if (st.fever <= 0 && st.feverCd <= 0 && Math.random() < this.feverChance()) this.startFever();
       }
     }
     for (const d of dirs) this.cutShots(P.x, P.y, d, D);     // 공격에 닿은 적 투사체는 쳐냄
     if (!extra && Wp.double > 0 && Math.random() < Wp.double) this.extra.push({ t:.1, dir });
+    if (!extra) for (let i = 1; i <= (this.M.multi || 0); i++) this.extra.push({ t:TUNE.multiStep * i + .02, dir });   // 연속 공격
+    if (this.M.waveLv > 0) this.fireWave(dir, C.dmg * mul);                                                   // 검기
     SFX.play('swing'); if (hitList.length) SFX.play('hit');
     if (!extra) SFX.play(id === 'usagi' && st.fever > 0 ? 'usagi_fever' : id + '_attack');   // 캐릭터 목소리 (sounds.js 의 chance·gap 으로 빈도 조절)
   }
@@ -189,9 +192,39 @@ export class SceneCombat extends SceneWorld {
     });
     this.rings.push({ x, y, r, age:0, color, fixed:true });
   }
+  /* 검기: 공격 방향으로 날아가는 초승달 (관통, 적마다 한 번) */
+  fireWave(dir, base) {
+    const W = TUNE.wave, lv = Math.min(3, this.M.waveLv), P = this.P;
+    if (this.pwaves.length >= 40) return;
+    this.pwaves.push({ x:P.x + dir.x * 20, y:P.y + dir.y * 20, dx:dir.x, dy:dir.y, r:W.r[lv - 1], dmg:base * W.dmg[lv - 1],
+                       left:this.D.range * W.reach, id:++this.atkId, age:0 });
+  }
+  stepWaves(dt) {
+    const sp = TUNE.wave.speed;
+    for (let i = this.pwaves.length - 1; i >= 0; i--) {
+      const w = this.pwaves[i], mv = sp * dt;
+      w.x += w.dx * mv; w.y += w.dy * mv; w.left -= mv; w.age += dt;
+      this.forEnemiesNear(w.x, w.y, w.r + 50, e => {
+        if (e.waveHit === w.id) return;
+        if ((e.x - w.x) ** 2 + (e.y - w.y) ** 2 > (w.r + e.r) ** 2) return;
+        e.waveHit = w.id;
+        this.hitEnemy(e, w.dmg, w.dx, w.dy, 160, STUN_SWING * .5);
+      });
+      this.cutShots(w.x, w.y, null, null, w.r);
+      if (w.left <= 0) this.pwaves.splice(i, 1);
+    }
+  }
+  /* 우라 야하! 발동 확률: 기본 3% (+푸루루루 1.5%p, +우라 야하 야하! Lv당 1%p) */
+  feverChance() { return (this.X.pururu ? .045 : .03) + .01 * (this.X.feverUp || 0) * this.xm(); }
+  /* 폭발 연출 (우라!!·구슬 폭발 등): 주황 불꽃 + 흰 충격 링 + 연기 */
+  boom(x, y, r) {
+    if (this.booms.length < 40) this.booms.push({ x, y, r, age:0 });
+    for (let i = 0; i < 3; i++) this.puff(x + (Math.random() - .5) * r, y + (Math.random() - .5) * r * .6 - 6, r / 22, 0xffb070);
+    this.shake(70, .003);
+  }
   startFever() {
     const st = this.st;
-    st.fever = 6 + (this.X.pururu ? 2 : 0) + (this.has('treat') ? 2 : 0);
+    st.fever = 6 + (this.X.pururu ? 2 : 0) + (this.has('treat') ? 2 : 0) + (this.X.feverUp || 0) * this.xm();
     this.pop(this.P.x, this.P.y - 70, '우라 야하!', '#ffe066');
     SFX.play('usagi_trait'); SFX.play('usagi_fever');
   }

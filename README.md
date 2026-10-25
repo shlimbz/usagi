@@ -130,6 +130,11 @@ food:    { src:'assets/items/onigiri.png', scale:.2,  origin:[.5, .9] },
 - **거래** (`trades.js`): `g`(등급 → 등장 빈도), `ok(s)`(조건), `take(s)` 효과. 위험 요소는 `s.R`(특수 규칙)로
 - **훈련소** (`training.js`): 항목만 추가하면 메뉴에 자동 표시. 보수는 판이 끝날 때 지갑에 저장
 
+### 배속 · 적 강화 단계
+
+- 게임 중 우측 위 `1x` 버튼 또는 **T** 키: 1x → 2x → 3x (설정에 저장)
+- `enemies.js` 의 `ENEMY_TIERS`: 2분마다 기본 몹이 한 단계씩 강해지고 색(원래→초록→파랑→분홍→빨강)·크기가 바뀜
+
 ### 적 추가 (`src/data/enemies.js`)
 
 `rank`(base/mid/boss), `ai`('chase'·'keep'·'charge'), `shot`(원거리: `pattern` aim·fan·ring·spiral). 중간보스·보스는 `SCHEDULE` 에 시각을 넣으면 등장. 그림은 `assets.js` 의 `enemies` (지금은 코드로 그린 임시 형태). 플레이어의 공격·필살기에 닿은 적 투사체는 사라짐

@@ -25,8 +25,8 @@ export class SceneStats extends SceneBase {
     if (st.ramen > 0) dmg += .15;
     if (st.band > 0) dmg += .25;
     if (st.mfood > 0 && st.mfoodKind === 'dmg') dmg += .5;
-    if (X.did) dmg += Math.min(.2, P.lvl * .005);
-    if (X.together) dmg += .2;
+    if (X.did) dmg += Math.min(.4, P.lvl * .01);
+    if (X.together) dmg += .35;
     let aspd = M.aspd + Wp.aspd + .4 * cour.k;
     if (fever) aspd += .5;
     if (st.cry > 0) aspd += [0, .1, .15, .2][X.cry] * xm;
@@ -37,14 +37,17 @@ export class SceneStats extends SceneBase {
     if (st.cry > 0) spd += .1;
     if (X.shiver && P.inv > 0) spd += .2;
     spd = Math.max(.4, spd);
-    if (this.once.wind) dmg += Math.max(0, spd - 1) * 2;                // 바람돌이: 이동 속도 보너스 ×2 → 공격력
+    if (this.once.wind) dmg += Math.max(0, spd - 1) * 3;                // 바람돌이: 이동 속도 보너스 ×2 → 공격력
     if (st.chaosOn > 0 && st.chaosKind === 'dmg') dmg *= 2;           // 혼돈의 계약
     if (st.chaosOn > 0 && st.chaosKind === 'fever') aspd += .6;
     dmg = Math.max(.1, dmg);
     const lance = PRESETS[id].shape === 'cone';
     let arc = 0, width = 0, range = C.range * (1 + M.range + Wp.range + (lance ? M.arcLv * TUNE.lanceLenStep : 0));
     if (lance) width = C.width + Wp.width + M.arcLv * TUNE.widthStep;            // 마상창: 밑변 폭
-    else arc = Math.min(360, C.arc + Wp.arc + M.arcDeg + M.arcLv * TUNE.arcStep.fan);   // 봉: 부채꼴 각도
+    else {                                                                      // 봉: 부채꼴 각도
+      arc = C.arc + Wp.arc + M.arcDeg + M.arcLv * TUNE.arcStep.fan;
+      if (arc > 360) { range *= 1 + (arc - 360) / 600; arc = 360; }            // 360° 넘친 각도는 버리지 않고 사거리로 (30° = +5%)
+    }
     width *= R.widthMul; arc *= R.widthMul;
     if (fever) { arc = Math.min(360, arc * 1.4); range *= 1.4; }
     let dr = 1;
@@ -59,8 +62,8 @@ export class SceneStats extends SceneBase {
     return {
       dmg, interval:Math.max(MIN_INTERVAL, C.cd / (1 + Math.max(-.5, aspd))), lance, arc, half:rad(arc / 2), width, halfW:width / 2, range,
       spd, kb:C.kb * (1 + M.kb + Wp.kb), crit:Math.min(1, M.crit + M.luck / 2), critDmg:1.5 + M.critDmg,
-      dr, maxHpMul:Math.max(.2, 1 + M.maxhp + posi), magnet:TUNE.magnet * (1 + M.magnet), xp:C.xp * (1 + M.xp + (X.did ? .15 : 0)),
-      heal:(1 + M.heal) * (X.resolve ? .5 : 1), gaugeMul:1 + M.gauge + (this.once.medal ? .3 : 0), cour
+      dr, maxHpMul:Math.max(.2, 1 + M.maxhp + posi), magnet:TUNE.magnet * (1 + M.magnet), xp:C.xp * (1 + M.xp + (X.did ? .25 : 0)),
+      heal:(1 + M.heal) * (X.resolve ? .5 : 1), gaugeMul:1 + M.gauge + (this.once.medal ? .5 : 0), cour
     };
   }
   syncMaxHp() {                                               // 최대 HP가 늘면 늘어난 만큼 회복

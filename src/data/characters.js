@@ -13,8 +13,8 @@ export const PRESETS = {
   usagi: {
     name:'우사기', diff:'중급', stars:2, tagline:'빠르고 넓게 휘두르는 폭주형', desc:'초반부터 강하고 빠름. 랜덤 피버로 순간 최고점이 높다',
     traitShort:'가끔 폭주 → 6초간 모든 게 빨라짐', spShort:'2회전 + 화면 충격파',
-    trait:'우라 야하!', traitDesc:'휘두를 때 3% 확률로 6초간 이동속도 +40%, 공격속도 +50%, 공격 각도·사거리 +40%',
-    spName:'이야아~ 야다야다', spDesc:'2회전베기 후 화면 끝까지 퍼지는 충격파',
+    trait:'우라 야하!', traitDesc:'공격 시 3% 확률로 6초간 이동·공격 속도 상승',
+    spName:'이야아~ 야다야다', spDesc:'두 번 베고 넓은 충격파를 날려요',
     hipY:-26.88, armReach:8,
     poses: {
       idle: { key:'usagi:idle', src:IMG.usagi_idle, scale:USAGI_IDLE_SC, ax:188.5, ay:374, hand:[260, 308] },
@@ -27,8 +27,8 @@ export const PRESETS = {
   chiikawa: {
     name:'치이카와', diff:'상급', stars:3, tagline:'체력이 낮을수록 강해지는 용사', desc:'풀피에선 약하지만 HP가 낮을수록 강해진다',
     traitShort:'체력 ↓ = 공격·속도 ↑', spShort:'무적 돌진',
-    trait:'용기', traitDesc:'HP가 낮을수록 피해·공격속도·이동속도 증가 (HP 20% 이하에서 최대, 레벨이 오를수록 커짐)',
-    spName:'시러! 시러!!!', spDesc:'이동 방향으로 무적 돌진, 경로의 모든 적에게 큰 피해',
+    trait:'용기', traitDesc:'체력이 낮을수록 공격·이동 속도 상승',
+    spName:'시러! 시러!!!', spDesc:'무적 돌진으로 길 위의 적을 공격해요',
     hipY:-26, armReach:8,
     poses: {
       idle: { key:'chiikawa:idle', src:IMG.chii_idle, scale:52 / 223,   ax:96.5,  ay:222, hand:[177, 162] },
@@ -42,7 +42,7 @@ export const PRESETS = {
     name:'하치와레', diff:'초급', stars:1, tagline:'튼튼하고 빨리 크는 안정형', desc:'튼튼하고 성장이 빠른 안정형',
     traitShort:'경험치 +10%', spShort:'5초간 사방 찌르기',
     trait:'차근차근', traitDesc:'경험치 획득량 +10%',
-    spName:'어떻게든 되어라~!', spDesc:'5초간 사방으로 2연타 찌르기 + 강한 넉백, 받는 피해 -50%',
+    spName:'어떻게든 되어라~!', spDesc:'5초간 사방을 찌르고, 받는 피해가 줄어요',
     hipY:-26, armReach:8,
     poses: {
       idle: { key:'hachiware:idle', src:IMG.hachi_idle, scale:52 / 288, ax:122, ay:287, hand:[226, 185] },

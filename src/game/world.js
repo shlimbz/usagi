@@ -1,7 +1,7 @@
 import { SFX } from '../audio/audio.js';
 import { RING_R } from '../core/config.js';
 import { SET } from '../core/store.js';
-import { ENEMY_TYPES, SCHEDULE, SHOT_RULES } from '../data/enemies.js';
+import { ENEMY_TIERS, ENEMY_TYPES, SCHEDULE, SHOT_RULES } from '../data/enemies.js';
 import { ITEMS } from '../data/items.js';
 import { TUNE } from '../data/tuning.js';
 import { texInfo } from '../engine/textures.js';
@@ -21,6 +21,9 @@ export class SceneWorld extends SceneStats {
                        chg:'', chgT:T.charge ? T.charge.cd * (.6 + Math.random() * .5) : 0, cdx:0, cdy:0, strafe:Math.random() < .5 ? 1 : -1,
                        r:T.r, spd:T.spd * (elite ? 1 : .9 + Math.random() * .2), mass:T.mass, flash:0, tintState:'', lastAtk:-1,
                        lastHit:-1, waveId:-1, dmgAcc:0, dmgCrit:false, numT:-1, burnT:0, burnDps:0, hitCd:0, bumped:true, lastDmg:0, sc:T.scale || 1, phase:Math.random() * 6 });
+    const tier = elite ? null : ENEMY_TIERS[this.tier || 0];   // 시간대 강화 단계 (기본 몹만)
+    if (tier) { e.hp *= tier.hp; e.dmg *= tier.dmg; e.sc *= tier.scale; }
+    e.tint = elite ? T.tint || null : tier.tint; e.tierIdx = elite ? -1 : this.tier || 0;
     e.maxHp = e.hp;
     const ti = texInfo(T.tex); e.ts = ti.scale;
     e.img.setTexture(T.tex).setOrigin(...ti.origin).setScale(e.sc * e.ts).clearTint();
@@ -121,6 +124,8 @@ export class SceneWorld extends SceneStats {
         this.spawnEnemy('slime', this.P.x + Math.cos(a) * RING_R * .85, this.P.y + Math.sin(a) * RING_R * .85);
       }
     }
+    const nt = ENEMY_TIERS.reduce((a, T, i) => this.t >= T.t ? i : a, 0);    // 강화 단계 올라감 알림
+    if (nt !== (this.tier || 0)) { this.tier = nt; this.toast(`적이 강해졌다! ${ENEMY_TIERS[nt].name}`); SFX.play('elite'); }
     while (this.schedIdx < SCHEDULE.length && this.t >= SCHEDULE[this.schedIdx].t) {   // 중간보스·보스 (enemies.js SCHEDULE)
       const ev = SCHEDULE[this.schedIdx++], type = ev.boss ? ev.boss[Math.floor(Math.random() * ev.boss.length)] : ev.type;
       const a = Math.atan2(this.P.aimY, this.P.aimX);

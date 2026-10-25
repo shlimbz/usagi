@@ -111,6 +111,7 @@ export function initUI() {
   $('sHpBar').addEventListener('change', e => { SET.hpBar = e.target.checked; });
   $('sStress').addEventListener('input', e => { SET.stress = +e.target.value; $('sStressV').textContent = SET.stress + 'x'; });
   $('pauseBtn').addEventListener('pointerdown', e => { e.preventDefault(); scene()?.pauseGame(); });
+  $('speedBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); scene()?.cycleSpeed(); });
   $('spinBtn').addEventListener('pointerdown', e => { e.preventDefault(); btn.spin = true; });
   $('bReroll').addEventListener('pointerdown', e => { e.preventDefault(); btn.tool = 'reroll'; });
   $('bBanish').addEventListener('pointerdown', e => { e.preventDefault(); btn.tool = 'banish'; });

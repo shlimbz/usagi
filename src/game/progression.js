@@ -8,12 +8,14 @@ import { WEAPONS } from '../data/weapons.js';
 import { DICE_STATS, TRADES, TRADE_RULES, diceRoll } from '../data/trades.js';
 import { SceneSurvival } from './survival.js';
 import { $, btn } from '../ui/state.js';
+import { app } from '../core/app.js';
 
 /* 씬 7/9: 레벨업 · 선택지 추첨 · Reroll/Banish/Skip · 보물상자 · 빌드 요약 */
 export class SceneProgression extends SceneSurvival {
   /* ================= 레벨업 / 보물상자 ================= */
   gainXp(v) {
     const P = this.P;
+    if (app.sandbox && app.sandbox.noXp) return;            // 테스트 페이지: 레벨업 끔
     P.xp += v * this.D.xp;
     while (P.xp >= P.need) {
       P.xp -= P.need; P.lvl++; P.need = XP_NEED(P.lvl); this.pendingLv++;

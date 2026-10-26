@@ -114,7 +114,7 @@ export function makeGameTextures(scene) {
 
 /* ---------- 새 적·아이템·중립 캐릭터 임시 그림 (형태·크기 참고용 — 이미지를 주면 assets.js 에서 교체) ---------- */
 function makeExtraTextures(scene) {
-  // 기본 몹 · 중형 · 벌레3(원거리): 기본 대체 그림
+  // 기본 몹 · 중형 · 침뱉개(원거리): 입 벌린 꽃봉오리
   makeTex(scene, 'e_spitter', 48, 48, q => {
     q.fill(0x000000, .22).ell(24, 44, 30, 7);
     q.fill(0x5aa65a).tri(8, 40, 18, 30, 14, 44).tri(40, 40, 30, 30, 34, 44);
@@ -122,7 +122,7 @@ function makeExtraTextures(scene) {
     q.fill(0x3a2f2f).circ(24, 28, 7); q.fill(0xff6b8a).circ(24, 30, 3.5);
     q.fill(0x3a2f2f).circ(17, 18, 2).circ(31, 18, 2);
   });
-  // 중간보스 · 소형 · 날쌘꼬마: 기본 대체 그림
+  // 중간보스 · 소형 · 날쌘 꼬마: 뿔 달린 빨간 공
   makeTex(scene, 'e_imp', 40, 40, q => {
     q.fill(0x000000, .22).ell(20, 36, 24, 6);
     q.fill(0xd9483b).tri(9, 12, 13, 2, 16, 12).tri(31, 12, 27, 2, 24, 12);
@@ -141,7 +141,7 @@ function makeExtraTextures(scene) {
     q.fill(0x2a2230).circ(31, 32, 2.2).circ(41, 32, 2.2); q.fill(0xb38548).rr(33, 40, 6, 3, 1);
     q.fill(0x3d6fb6).rr(26, 14, 20, 8, 3);
   });
-  // 보스 · 인간형 중형 · 검은기사: 기본 대체 그림
+  // 보스 · 인간형 중형 · 검은 기사: 투구 깃털 + 갑옷 + 검
   makeTex(scene, 'e_knight', 56, 76, q => {
     q.fill(0x000000, .25).ell(28, 72, 34, 7);
     q.fill(0x2e3346).rr(18, 54, 8, 18, 3).rr(30, 54, 8, 18, 3);
@@ -171,7 +171,7 @@ function makeExtraTextures(scene) {
     q.fill(0x2a2230).circ(59, 14, 2.4).circ(71, 14, 2.4);
     q.fill(0xffc53d).rr(56, 58, 4, 10, 1).rr(70, 58, 4, 10, 1);
   });
-  // 보스 · 대형 · 폭주자동차: 기본 대체 그림
+  // 보스 · 대형 · 폭주 자동차: 빨간 차체 + 창문 + 바퀴
   makeTex(scene, 'e_car', 130, 76, q => {
     q.fill(0x000000, .25).ell(65, 70, 118, 10);
     q.fill(0xd9483b).rr(6, 30, 118, 30, 10); q.line(2.5, OUT).srr(6, 30, 118, 30, 10);

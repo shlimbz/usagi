@@ -6,6 +6,7 @@ import { TUNE } from '../data/tuning.js';
 import { ANIMS } from '../engine/anim.js';
 import { fanHitsCircle } from '../engine/collision.js';
 import { SceneField } from './field.js';
+import { app } from '../core/app.js';
 import { renderCharCards } from '../ui/menu.js';
 import { $, btn, joy } from '../ui/state.js';
 import { SET, store } from '../core/store.js';
@@ -121,7 +122,7 @@ export class SceneLoop extends SceneField {
   step(dt) {
     const P = this.P;
     this.t += dt;
-    if (this.t >= GOAL_TIME) { this.endRun(true); return; }
+    if (this.t >= GOAL_TIME && !app.sandbox) { this.endRun(true); return; }
     this.tickTimers(dt);
     const D = this.D = this.derive(), C = PRESETS[this.rig.id].base;
 
@@ -200,7 +201,7 @@ export class SceneLoop extends SceneField {
     this.rig.apply(this.anim.pose, name === 'walk' || name === 'run' || (moving && !this.swing), speed, dt);
 
     // ---- 적 이동(행동 패턴) + 원거리 공격 + 접촉 + 화상 ----
-    const E = this.enemies, kd = Math.exp(-8 * dt), sing = !!this.X.sing, frozen = this.st.freeze > 0;
+    const E = this.enemies, kd = Math.exp(-8 * dt), sing = !!this.X.sing, frozen = this.st.freeze > 0, dummy = !!(app.sandbox && app.sandbox.dummy);
     const ram = this.once.wind && speed > 150;               // 바람돌이: 달리는 중 부딪힌 적에게 피해
     for (let i = E.length - 1; i >= 0; i--) {
       const e = E[i];
@@ -221,8 +222,9 @@ export class SceneLoop extends SceneField {
       if (e.orbCd > 0) e.orbCd -= dt;
       if (e.ramCd > 0) e.ramCd -= dt;
       dx /= d; dy /= d;
-      let mx = dx, my = dy, chase = e.stun > 0 || frozen ? 0 : e.spd;   // 경직·얼음 중에는 못 움직임
-      if (!frozen && e.stun <= 0) {
+      const hold = dummy && e.chg === '';                     // 테스트 페이지 '허수아비': 직접 시킨 돌진만 함
+      let mx = dx, my = dy, chase = e.stun > 0 || frozen || hold ? 0 : e.spd;   // 경직·얼음 중에는 못 움직임
+      if (!frozen && e.stun <= 0 && !hold) {
         if (T.ai === 'keep') {                                // 원거리형: 일정 거리 유지하며 옆으로 맴돎
           if (d < T.keep - 30) chase = -e.spd * .7;
           else if (d < T.keep + 40) { mx = -dy * e.strafe; my = dx * e.strafe; chase = e.spd * .6; }

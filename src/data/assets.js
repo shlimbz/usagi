@@ -9,7 +9,7 @@
  *    src    : 경로
  *    scale  : 게임 안 크기 배율 (원본 픽셀 × scale = 게임 픽셀)
  *    origin : 발밑 기준점 [x비율, y비율] — 그림자·판정이 이 점 기준
- *  예) e_slime: { src:'assets/enemies/e_slime.png', scale:.15, origin:[.5, .95] }
+ *  예) e_slime: { src:'assets/enemies/slime.png', scale:.25, origin:[.5, .92] }
  * ===================================================================== */
 export const ASSETS = {
   characters: {
@@ -20,18 +20,17 @@ export const ASSETS = {
     hachi_idle: 'assets/characters/hachiware_idle.png',
     hachi_run:  'assets/characters/hachiware_run.png'      // 예전 대기 그림(왼쪽을 봄 → flipX) → 이동용
   },
-  enemies: {                 // 이미지 PNG는 캐릭터만 보이도록 배경을 제거함
-    e_slime:  { src:'assets/enemies/e_slime.png',  scale:.15,  origin:[.5,.95] }, // 벌레1
-    e_bat:    { src:'assets/enemies/e_bat.png',    scale:.12,  origin:[.5,.96] }, // 고블린
-    e_golem:  { src:'assets/enemies/e_golem.png',  scale:.23,  origin:[.5,.96] }, // 벌레2
-    e_spitter:{ src:'assets/enemies/e_spitter.png',scale:.155, origin:[.5,.96] }, // 벌레3
-    e_imp:    { src:'assets/enemies/e_imp.png',    scale:.095, origin:[.5,.96] }, // 풍댕이
-    e_big:    { src:'assets/enemies/e_big.png',    scale:.175, origin:[.5,.94] }, // 키메라
-    e_sphinx: { src:'assets/enemies/e_sphinx.png', scale:.34,  origin:[.5,.96] }, // 스핑크스
-    e_knight: { src:'assets/enemies/e_knight.png', scale:.33,  origin:[.5,.96] }, // 마녀 그림 → 검은기사
-    e_mage:   { src:'assets/enemies/e_mage.png',   scale:.28,  origin:[.5,.96] }, // 코끼리 그림 → 점술사
-    e_bird:   { src:'assets/enemies/e_bird.png',   scale:.40,  origin:[.5,.96] }, // 큰 새
-    e_car:    { src:'assets/enemies/e_car.png',    scale:.285, origin:[.5,.98] }  // 의태형 그림 → 왼쪽이 앞인 폭주 자동차
+  enemies: {                 // 기본 몹 · 중간보스 · 보스 (종류·능력치는 src/data/enemies.js)
+    e_slime: null,           // 소형 · 슬라임
+    e_bat:   null,           // 소형 · 박쥐
+    e_golem: null,           // 중형 · 골렘 (중간보스 '커다란 녀석'도 이 그림을 크게·붉게)
+    e_spitter: null,         // 중형 · 침뱉개 (원거리)
+    e_imp:   null,           // 중간보스 소형 · 날쌘 꼬마
+    e_sphinx: null,          // 중간보스 대형 · 스핑크스
+    e_knight: null,          // 보스 인간형 중형 · 검은 기사
+    e_mage:  null,           // 보스 인간형 중형 · 점술사
+    e_bird:  null,           // 보스 대형 · 큰 새
+    e_car:   null            // 보스 대형 · 폭주 자동차
   },
   items: {                   // 맵 아이템 (종류·효과는 src/data/items.js)
     gem:   null,             // 경험치 구슬
@@ -41,9 +40,9 @@ export const ASSETS = {
     orb_star: null,          // 궤도 별 (빙글빙글 별·별사탕 부적 등)
     e_shot: null             // 적 투사체
   },
-  neutrals: {                // 중립 캐릭터
-    n_ystar: { src:'assets/neutrals/n_ystar.png', scale:.16,  origin:[.5,.94] }, // 노란별: 동료
-    n_armor: { src:'assets/neutrals/n_armor.png', scale:.15,  origin:[.5,.98] }, // 갑옷씨: 상점
-    n_bstar: { src:'assets/neutrals/n_bstar.png', scale:.16,  origin:[.5,.96] }  // 검은별: 거래
+  neutrals: {                // 중립 캐릭터 (src/data/neutrals.js)
+    n_ystar: null,           // 노란별 (동료가 되면 궤도를 돌며 공격)
+    n_armor: null,           // 갑옷씨 (상점)
+    n_bstar: null            // 검은별 (거래)
   }
 };

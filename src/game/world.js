@@ -1,5 +1,6 @@
 import { SFX } from '../audio/audio.js';
 import { RING_R } from '../core/config.js';
+import { app } from '../core/app.js';
 import { SET } from '../core/store.js';
 import { ENEMY_TIERS, ENEMY_TYPES, SCHEDULE, SHOT_RULES } from '../data/enemies.js';
 import { ITEMS } from '../data/items.js';
@@ -108,6 +109,7 @@ export class SceneWorld extends SceneStats {
   }
   countType(T) { let n = 0; for (let i = 0; i < this.enemies.length; i++) if (this.enemies[i].type === T) n++; return n; }
   spawnTick(dt) {
+    if (app.sandbox && app.sandbox.noSpawn) return;      // 테스트 페이지: 자동 생성 끔
     const st = SET.stress, cap = Math.min(this.MAX_ENEMIES, Math.floor(220 * st + this.t * 1.5));
     this.spawnAcc += (1 + this.t * .045) * st * dt;
     while (this.spawnAcc >= 1) {

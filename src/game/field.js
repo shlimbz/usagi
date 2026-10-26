@@ -8,6 +8,7 @@ import { SHOP, SHOP_RULES } from '../data/shop.js';
 import { texInfo } from '../engine/textures.js';
 import { SceneProgression } from './progression.js';
 import { $, btn } from '../ui/state.js';
+import { app } from '../core/app.js';
 
 /* 씬 8/10: 맵 아이템 · 중립 캐릭터(노란별·갑옷씨·검은별) · 궤도 별 · 적 투사체 · 갑옷 상점 · 특수 규칙(거래·유물) */
 export class SceneField extends SceneProgression {
@@ -52,7 +53,7 @@ export class SceneField extends SceneProgression {
   stepItems(dt) {
     const P = this.P;
     this.fieldT += dt;
-    if (this.fieldT >= ITEM_RULES.fieldEvery) {                // 맵에 저절로 생기는 아이템
+    if (this.fieldT >= ITEM_RULES.fieldEvery && !(app.sandbox && app.sandbox.noSpawn)) {                // 맵에 저절로 생기는 아이템
       this.fieldT = 0;
       const a = Math.random() * 6.28, r = rnd(...ITEM_RULES.fieldDist);
       this.spawnItem(this.pickDrop('field'), P.x + Math.cos(a) * r, P.y + Math.sin(a) * r);
@@ -139,7 +140,7 @@ export class SceneField extends SceneProgression {
   stepNeutral(dt) {
     const P = this.P, NR = NEUTRAL_RULES;
     if (!this.neutral) {
-      if (this.t < NR.first) return;
+      if (this.t < NR.first || (app.sandbox && app.sandbox.noSpawn)) return;
       this.neutralT -= dt;
       if (this.neutralT > 0) return;
       this.neutralT = NR.every;

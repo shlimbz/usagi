@@ -5,6 +5,7 @@ import { PRESETS } from '../data/characters.js';
 import { ITEMS } from '../data/items.js';
 import { SceneSpecials } from './specials.js';
 import { $ } from '../ui/state.js';
+import { app } from '../core/app.js';
 
 /* 씬 6/9: 피격 · 부활 효과 · 음식 · 게임 종료 */
 export class SceneSurvival extends SceneSpecials {
@@ -22,6 +23,7 @@ export class SceneSurvival extends SceneSpecials {
   damagePlayer(amount, src) {
     const P = this.P, X = this.X, st = this.st, R = this.R;
     if (this.invulnerable() || !P.alive) return;
+    if (app.sandbox && app.sandbox.god) { this.rig.flash(.15); return; }   // 테스트 페이지: 무적 (맞은 표시만)
     if (st.shield > 0) {                                     // 껍데기 계약: 보호막이 한 번 막음
       st.shield = 0; st.shieldT = R.shieldCd; P.inv = INV_TIME;
       this.pop(P.x, P.y - 70, '보호막!', '#fff2b0'); SFX.play('hit');

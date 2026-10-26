@@ -16,10 +16,11 @@ import { Main } from './game/render.js';
 import { initUI } from './ui/menu.js';
 
 app.game = new Phaser.Game({
-  type: Phaser.AUTO, parent: 'game', width: W * WORLD, height: H * WORLD, backgroundColor: '#fff2f6',
+  type: Phaser.AUTO, parent: 'game', width: W * WORLD, height: H * WORLD, backgroundColor: '#1d2230',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   render: { antialias: true, antialiasGL: false, powerPreference: 'high-performance', batchSize: 4096 },
   fps: { target: 60, smoothStep: false }, banner: false, scene: Main
 });
 initUI();
-window.__game = app.game;          // 개발용: 브라우저 콘솔에서 __game.scene.keys.main 으로 상태 확인
+window.__game = app.game;
+if (/[?&]test\b/.test(location.search)) import('./sandbox.js');   // 테스트 페이지 (test.html → index.html?test)          // 개발용: 브라우저 콘솔에서 __game.scene.keys.main 으로 상태 확인
